@@ -1,15 +1,22 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import time
 import schedule
-from datetime import datetime
+from threading import Thread
+from flask import Flask
 import re
 
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 
-# Memoria global para recordar qué resultados ya se enviaron
+app = Flask(_name_)
+
+@app.route('/')
+def home():
+    return "¡El bot de resultados de lotería está activo y funcionando perfectamente!"
+
 resultados_enviados = set()
 primera_ejecucion = True
 
@@ -25,18 +32,13 @@ def verificar_resultados():
             return
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
-        
-        # En esta web, cada lotería es un bloque o tarjeta principal que contiene su título y sus horas
-        # Buscamos los contenedores principales de las loterías
         tarjetas_loteria = soup.find_all('div', class_=re.compile(r'flex flex-col.*'))
         
         nuevos_encontrados = []
 
         for tarjeta in tarjetas_loteria:
             try:
-                # 1. Buscar el nombre de la lotería en la parte superior de esta tarjeta específica
                 nombre_loteria = ""
-                # Buscamos encabezados o textos destacados dentro de la tarjeta que actúen como título
                 posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'div', 'span'])
                 
                 keywords = [
@@ -49,22 +51,18 @@ def verificar_resultados():
                 for tag in posibles_titulos:
                     txt = limpiar_texto(tag.text)
                     upper_txt = txt.upper()
-                    # Verificamos si contiene alguna palabra clave de lotería y no es una hora ni un resultado
                     if any(k in upper_txt for k in keywords) and len(txt) > 2 and "AM" not in upper_txt and "PM" not in upper_txt and "PENDIENTE" not in upper_txt and "-" not in upper_txt:
-                        # Evitamos que tome textos muy largos que no sean el título
                         if len(txt) < 40:
                             nombre_loteria = upper_txt.replace("IR", "").strip()
                             break
 
                 if not nombre_loteria:
-                    continue  # Si esta tarjeta no es un bloque de lotería válido, pasamos a la siguiente
+                    continue
 
-                # 2. Buscar todos los sorteos (horas y resultados) dentro de esta tarjeta de lotería
                 items_sorteo = tarjeta.find_all('div', class_='flex flex-col items-center gap-2 group relative')
                 
                 for item in items_sorteo:
                     try:
-                        # Extraer hora
                         hora_elem = item.find('div', class_='text-center')
                         if not hora_elem:
                             continue
@@ -74,7 +72,6 @@ def verificar_resultados():
                             continue
                         hora = match_hora.group(0).upper()
 
-                        # Extraer resultado
                         res_elem = item.find('div', class_='bg-yellow-500')
                         if not res_elem:
                             continue
@@ -83,7 +80,6 @@ def verificar_resultados():
                         if not resultado_bruto or resultado_bruto.upper() == "PENDIENTE":
                             continue
 
-                        # Limpiar formato del animalito (Ej: 64 - GAVILAN)
                         animal_texto = ""
                         for t in item.find_all(string=True):
                             t_str = limpiar_texto(t)
@@ -105,7 +101,6 @@ def verificar_resultados():
                         else:
                             resultado_final = f"{resultado_bruto} - {animal_texto}"
 
-                        # Clave única para control interno
                         clave = (nombre_loteria, hora, resultado_final)
 
                         if primera_ejecucion:
@@ -126,10 +121,9 @@ def verificar_resultados():
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print("🚀 Bot iniciado correctamente con lectura por tarjetas. Monitoreando resultados...")
+            print("🚀 Bot en la nube sincronizado correctamente con Gunicorn...")
             return
 
-        # Enviar únicamente los resultados nuevos con el formato limpio solicitado
         for item_nuevo in nuevos_encontrados:
             mensaje = (
                 "✅ NUEVO RESULTADO 🎰\n\n"
@@ -147,12 +141,14 @@ def verificar_resultados():
     except Exception as e:
         print(f"⚠️ Error general: {e}")
 
-# Ejecución inicial para sincronizar memoria
-verificar_resultados()
+def loop_bot():
+    verificar_resultados()
+    schedule.every(2).minutes.do(verificar_resultados)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
-# Revisar la página cada 2 minutos
-schedule.every(2).minutes.do(verificar_resultados)
-
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+# Hilo en segundo plano para que el bot corra permanentemente con Gunicorn
+t = Thread(target=loop_bot)
+t.daemon = True
+t.start()
