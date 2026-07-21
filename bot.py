@@ -11,7 +11,7 @@ TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 
-app = Flask(_name_)
+app = Flask('')
 
 @app.route('/')
 def home():
@@ -121,7 +121,7 @@ def verificar_resultados():
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print("🚀 Bot en la nube sincronizado correctamente con Gunicorn...")
+            print("🚀 Bot en la nube sincronizado correctamente...")
             return
 
         for item_nuevo in nuevos_encontrados:
@@ -148,7 +148,12 @@ def loop_bot():
         schedule.run_pending()
         time.sleep(1)
 
-# Hilo en segundo plano para que el bot corra permanentemente con Gunicorn
-t = Thread(target=loop_bot)
-t.daemon = True
-t.start()
+if _name_ == '_main_':
+    # Arrancamos el bot en un hilo secundario
+    t = Thread(target=loop_bot)
+    t.daemon = True
+    t.start()
+    
+    # Arrancamos Flask en el hilo principal usando el puerto que exige Render
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
