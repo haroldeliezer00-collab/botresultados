@@ -41,22 +41,31 @@ def verificar_resultados():
         nuevos_encontrados = []
 
         for tarjeta in tarjetas:
-            # Extraer exactamente el título completo de la tarjeta de forma estricta
-            elemento_titulo = tarjeta.find(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto', re.IGNORECASE))
+            # Extracción robusta del nombre de la lotería
+            nombre_loteria = ""
             
-            texto_titulo = ""
-            if elemento_titulo:
-                texto_titulo = elemento_titulo.get_text(" ", strip=True).upper()
-            else:
-                lineas = [l.strip() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
-                texto_titulo = lineas[0].upper() if lineas else ""
-
-            # Validar que el título sea válido
-            if not texto_titulo or len(texto_titulo) > 40 or "PENDIENTE" in texto_titulo:
+            # 1. Intentar buscar en elementos específicos de título/encabezado
+            posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
+            for pt in posibles_titulos:
+                t_text = pt.get_text(" ", strip=True).upper()
+                if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
+                    if t_text not in ["WINBIG", "RESULTADOS"]:
+                        nombre_loteria = t_text
+                        break
+            
+            # 2. Si no se encontró, buscar la primera línea válida de texto dentro de la tarjeta
+            if not nombre_loteria:
+                lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
+                for linea in lineas:
+                    if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
+                        nombre_loteria = linea
+                        break
+            
+            # Si aún está vacío o es demasiado largo, se descarta para evitar enviar datos erróneos
+            if not nombre_loteria or len(nombre_loteria) > 40:
                 continue
             
-            # Asignar el nombre limpio completo (esto preservará RD INT, RDOMINICANA, etc. sin recortarlos)
-            nombre_loteria = limpiar_texto(texto_titulo)
+            nombre_loteria = limpiar_texto(nombre_loteria)
 
             # Buscar los sorteos individuales dentro de ESTA tarjeta específica
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
@@ -83,7 +92,7 @@ def verificar_resultados():
                 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
 
-                # Clave única combinando el nombre completo real, la hora y el resultado
+                # Clave única combinando el nombre real, la hora y el resultado
                 clave = (nombre_loteria, hora, resultado_final)
 
                 if primera_ejecucion:
