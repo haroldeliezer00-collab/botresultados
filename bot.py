@@ -16,7 +16,12 @@ from flask import Flask
 # ============================================================
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CANAL_ID = os.environ.get("CANAL_ID", "@pruebajsj")
+
+CANAL_ID = os.environ.get(
+    "CANAL_ID",
+    "@pruebajsj"
+)
+
 URL_LOTERIA = os.environ.get(
     "URL_LOTERIA",
     "https://lotery.winbigvzla.com/resultados"
