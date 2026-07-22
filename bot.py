@@ -18,13 +18,12 @@ app = Flask('')
 def home():
     return "¡El bot de resultados AGENCIA HAROLD JOSE está activo!"
 
-# Estado global
 resultados_enviados = set()
 datos_dia = {}  # Estructura: datos_dia[nombre_loteria][hora] = "03 🐛"
-tablas_enviadas = set() # Para llevar control de qué tablas ya se enviaron por hora
+tablas_enviadas = set() # Control para enviar la tabla una sola vez por bloque de hora
 primera_ejecucion = True
 
-# Encabezado oficial personalizado
+# Encabezado oficial personalizado de la Agencia Harold José
 HEADER_AGENCIA = (
     "╔═══════ ⋆★⋆ ═══════╗\n"
     "   *★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★*\n"
@@ -33,13 +32,13 @@ HEADER_AGENCIA = (
     "      *_Mas de 6 años brindando_*\n"
     "         *_confianza y seguridad_*\n"
     "    *_en cada rincón de Venezuela_*\n"
-    "         *ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ*\n"
+    "         *ʀᴇꜱᴜltados ᴏꜰɪᴄiᴀʟᴇꜱ*\n"
     "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363\n\n"
 )
 
-# Mapeo de nombres largos de la web a los códigos cortos de tus tablas
+# Mapeo exacto para los códigos cortos de las tablas
 MAPEO_CODIGOS = {
     "LA GRANJITA": "GRAJ",
     "LOTTO ACTIVO": "L.ACT",
@@ -87,34 +86,74 @@ def enviar_telegram(mensaje):
     requests.post(url, json=payload)
     time.sleep(1)
 
-def construir_tabla(titulo, horas, lista_loterias):
-    """Construye una parrilla en formato de texto monoespaciado para Telegram"""
-    tabla = f"📰 *{titulo}* 📰\n"
-    tabla += "➖➖➖➖➖➖➖➖➖➖\n```text\n"
-    
-    # Cabecera de códigos de lotería
+def construir_subtabla(horas, lista_loterias):
+    """Construye una sección de la parrilla con sus cabeceras de códigos"""
     header = " HORA"
     for loteria in lista_loterias:
         codigo = MAPEO_CODIGOS.get(loteria, loteria[:4].upper())
         header += f" {codigo:<5}"
-    tabla += header + "\n"
     
-    # Filas por hora
+    lineas_tabla = header + "\n"
     for hora in horas:
         fila = f"⏰{hora}"
         for loteria in lista_loterias:
             res = datos_dia.get(loteria, {}).get(hora, "")
             if res:
-                # Extraer números y emojis compactos (ej: "03🐛")
                 res_limpio = res.replace(" ", "")
                 fila += f" {res_limpio:<5}"
             else:
-                # Si no ha salido o se retrasó demasiado
                 fila += f" {'🔕🔕':<5}"
-        tabla += fila + "\n"
-        
-    tabla += "```\nMUCHA SUERTE EN SUS JUGADAS"
-    return tabla
+        lineas_tabla += fila + "\n"
+    return lineas_tabla
+
+def enviar_tablas_completas(hora_actual_str):
+    """Envía las tablas completas divididas exactamente como las muestras en tus imágenes"""
+    
+    # 1. TABLAS DE HORAS EN PUNTO (08:00 a 01:00, etc.)
+    horas_punto = ["08:00", "09:00", "10:00", "11:00", "12:00", "01:00"]
+    
+    bloques_punto = [
+        ["LA GRANJITA", "LOTTO ACTIVO", "SELVA PLUS"],
+        ["GUACHARO ACTIVO", "LOTO CHAIMA", "MONJE MILLONARIO"],
+        ["LOTTO ANIMALITO", "LOTTO PANTERA", "LOTTO REAL"],
+        ["LOTTO RD", "CENTENA ANIMALITOS", "MEGA ANIMAL"],
+        ["RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA"],
+        ["CONDOR GANA", "FRUTI GANA", "TROPI GANA"],
+        ["GRANJA MILLONARIA", "ZOOLOGICO ACTIVO", "LOTTO MAX"],
+        ["CENTENA ANIMALITOS"]
+    ]
+
+    cuerpo_tabla_1 = f"📊 *RESULTADO PROGRAMADO*\n🕒 Hora: {hora_actual_str}\n🔹 Resultado: 🎰 AGENCIA HAROLD JOSÉ 🎰\n_Trabajamos por tí y para tí_\n📲JUEGA AQUI👇👇\nWHATSAPP: 04124489363\n📰*RESULTADOS ANIMALITOS*📰\n➖➖➖➖➖➖➖➖➖➖\n```text\n"
+    
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["LA GRANJITA", "LOTTO ACTIVO", "SELVA PLUS"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["GUACHARO ACTIVO", "LOTO CHAIMA", "MONJE MILLONARIO"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["LOTTO ANIMALITO", "LOTTO PANTERA", "LOTTO REAL"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["LOTTO RD", "CENTENA ANIMALITOS", "MEGA ANIMAL"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["CONDOR GANA", "FRUTI GANA", "TROPI GANA"]) + "\n"
+    cuerpo_tabla_1 += construir_subtabla(horas_punto, ["GRANJA MILLONARIA", "ZOOLOGICO ACTIVO", "LOTTO MAX"]) + "\n"
+    cuerpo_tabla_1 += "```\nMUCHA SUERTE EN SUS JUGADAS"
+    
+    enviar_telegram(f"{HEADER_AGENCIA}\n{cuerpo_tabla_1}")
+
+    # 2. TABLAS DE LAS MEDIAS Y CUARTOS (Ej: 08:15, 09:15... / 08:30, 09:30...)
+    horas_medias = ["08:15", "09:15", "10:15", "11:15", "12:15", "01:15"]
+    cuerpo_tabla_2 = f"📊 *RESULTADO PROGRAMADO*\n🕒 Hora: {hora_actual_str}\n🔹 Resultado: 🎰 AGENCIA HAROLD JOSÉ 🎰\n_Trabajamos por tí y para tí_\n📲JUEGA AQUI👇👇\nWHATSAPP: 04124489363\n📰*RESULTADOS ANIMALITOS*📰\n➖➖➖➖➖➖➖➖➖➖\n```text\n"
+    cuerpo_tabla_2 += construir_subtabla(horas_medias, ["CENTENA PLUS", "GRANJITA PLUS", "LA RICACHONA"]) + "\n"
+    cuerpo_tabla_2 += construir_subtabla(["09:00", "10:00", "11:00", "12:00", "01:00"], ["CAZALOTON", "RULETA ACTIVA", "LOTTO GATO"]) + "\n"
+    cuerpo_tabla_2 += "```\nMUCHA SUERTE EN SUS JUGADAS"
+    
+    enviar_telegram(f"{HEADER_AGENCIA}\n{cuerpo_tabla_2}")
+
+    # 3. TABLAS DE MEDIAS HORAS (08:30, 09:30...)
+    horas_30 = ["08:30", "09:30", "10:30", "11:30", "12:30"]
+    cuerpo_tabla_3 = f"📊 *RESULTADO PROGRAMADO*\n🕒 Hora: {hora_actual_str}\n🔹 Resultado: 🎰 AGENCIA HAROLD JOSÉ 🎰\n_Trabajamos por tí y para tí_\n📲JUEGA AQUI👇👇\nWHATSAPP: 04124489363\n📰*RESULTADOS ANIMALITOS*📰\n➖➖➖➖➖➖➖➖➖➖\n```text\n"
+    cuerpo_tabla_3 += construir_subtabla(horas_30, ["GUACHARITO MILLONARIO", "LOTTO INTER"]) + "\n"
+    cuerpo_tabla_3 += construir_subtabla(horas_30, ["RULETA ROYAL", "GUACA ACTIVA 37"]) + "\n"
+    cuerpo_tabla_3 += construir_subtabla(["09:30", "10:30", "11:30", "12:30"], ["GRANJAZO", "PANTERA PLUS", "GATAZO"]) + "\n"
+    cuerpo_tabla_3 += "```\nMUCHA SUERTE EN SUS JUGADAS"
+
+    enviar_telegram(f"{HEADER_AGENCIA}\n{cuerpo_tabla_3}")
 
 def verificar_resultados():
     global primera_ejecucion
@@ -146,7 +185,6 @@ def verificar_resultados():
             
             nombre_loteria = limpiar_texto(texto_titulo)
 
-            # Registrar en la base de datos del día
             if nombre_loteria not in datos_dia:
                 datos_dia[nombre_loteria] = {}
 
@@ -171,7 +209,7 @@ def verificar_resultados():
                 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
 
-                # Guardar en memoria general del día para las tablas
+                # Guardar en la base de datos interna para armar las tablas
                 datos_dia[nombre_loteria][hora] = resultado_final
 
                 clave = (nombre_loteria, hora, resultado_final)
@@ -190,7 +228,7 @@ def verificar_resultados():
             print(f"🚀 Sincronización inicial lista. Total de registros base: {len(resultados_enviados)}")
             return
 
-        # 1. Enviar resultados individuales conforme van saliendo
+        # 1. Enviar cada resultado individualmente apenas salga con su encabezado
         for item_nuevo in nuevos_encontrados:
             mensaje = (
                 f"{HEADER_AGENCIA}"
@@ -201,31 +239,13 @@ def verificar_resultados():
             )
             enviar_telegram(mensaje)
 
-        # 2. Control de envío automático de tablas de resumen por bloques de horas
-        hora_actual_str = datetime.now().strftime("%I:%M %p")
+        # 2. Enviar tablas completas automáticamente a los 12 minutos pasados de cada hora (ej: 01:12 PM)
         minuto_actual = datetime.now().minute
-
-        # Si pasa de los 12 minutos de cada hora y aún no se ha enviado la tabla de esa hora, la mandamos
-        hora_corte = datetime.now().strftime("%I:12 %p")
-        
-        # Ejemplo: Enviar tablas automáticamente al completar los primeros minutos pasados de la hora (ej: 01:12 PM)
         bloque_hora_key = datetime.now().strftime("%I:00 %p")
-        if minuto >= 12 and bloque_hora_key not in tablas_enviadas:
-            # Generar y enviar bloques de tablas solicitadas
-            horas_tabla = ["08:00", "09:00", "10:00", "11:00", "12:00", "01:00"]
-            
-            loterias_grupo_1 = ["LA GRANJITA", "LOTTO ACTIVO", "SELVA PLUS"]
-            loterias_grupo_2 = ["GUACHARO ACTIVO", "LOTO CHAIMA", "MONJE MILLONARIO"]
-            loterias_grupo_3 = ["LOTTO ANIMALITO", "LOTTO PANTERA", "LOTTO REAL"]
-            loterias_grupo_4 = ["LOTTO RD", "CENTENA ANIMALITOS", "MEGA ANIMAL"]
-            loterias_grupo_5 = ["RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA"]
-            loterias_grupo_6 = ["CONDOR GANA", "FRUTI GANA", "TROPI GANA"]
-            loterias_grupo_7 = ["GRANJA MILLONARIA", "ZOOLOGICO ACTIVO", "LOTTO MAX"]
-
-            # Enviar tabla principal por partes o combinadas según gustes
-            t1 = construir_tabla("RESULTADOS ANIMALITOS", horas_tabla, loterias_grupo_1 + loterias_grupo_2[:1])
-            enviar_telegram(f"{HEADER_AGENCIA}\n{t1}")
-            
+        
+        if minuto_actual >= 12 and bloque_hora_key not in tablas_enviadas:
+            hora_actual_str = datetime.now().strftime("%I:%M %p")
+            enviar_tablas_completas(hora_actual_str)
             tablas_enviadas.add(bloque_hora_key)
 
     except Exception as e:
@@ -245,4 +265,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    
+        
