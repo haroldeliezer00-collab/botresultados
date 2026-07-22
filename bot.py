@@ -15,10 +15,21 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "¡El bot de AG HAROLD JOSE está activo y cazando resultados!"
+    return "¡El bot de resultados AG HAROLD JOSE está activo!"
 
 resultados_enviados = set()
 primera_ejecucion = True
+
+LISTA_LOTERIAS_OFICIALES = [
+    "LOTTO ACTIVO", "LA GRANJITA", "SELVA PLUS", "GUACHARO ACTIVO", 
+    "LOTO CHAIMA", "RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA", 
+    "LOTTO ANIMALITO", "LOTTO PANTERA", "MONJE MILLONARIO", "LOTTO REAL", 
+    "LOTTO INTER", "CAZALOTON", "MEGA ANIMAL", "CENTENA ANIMALITOS", 
+    "CENTENA PLUS", "GUACHARITO MILLONARIO", "RULETA ACTIVA", "GRANJITA PLUS", 
+    "LA RICACHONA", "GUACA ACTIVA 37", "LOTTO MAX", "TROPI GANA", 
+    "CONDOR GANA", "GRANJA MILLONARIA", "FRUTI GANA", "GRANJAZO", 
+    "LOTTO GATO", "GATAZO", "ZOOLOGICO ACTIVO", "LOTTO RD"
+]
 
 def limpiar_texto(texto):
     return " ".join(texto.split())
@@ -35,87 +46,84 @@ def verificar_resultados():
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
         
-        # Buscar cualquier texto o bloque que contenga formato de hora y resultado
-        # Esto extrae directamente cualquier elemento visible en la página
-        textos_pagina = soup.stripped_strings
-        texto_completo = " ".join(list(textos_pagina))
-
-        # Buscamos patrones de sorteos en la página de manera global por si el diseño cambia
-        # Patrón flexible para capturar el nombre, la hora y el resultado numérico/animalito
-        
-        # Vamos a escanear todos los bloques contenedores posibles
-        bloques = soup.find_all(['div', 'section', 'article', 'li'])
+        # Buscar contenedores principales de los sorteos
+        tarjetas = soup.find_all(['div', 'section'], class_=re.compile(r'flex|card|grid', re.IGNORECASE))
         
         nuevos_encontrados = []
 
-        for bloque in bloques:
-            contenido = bloque.get_text(" ", strip=True)
+        for tarjeta in tarjetas:
+            texto_tarjeta = tarjeta.get_text(" ", strip=True).upper()
             
-            # Buscar si el bloque tiene una hora (ej: 10:00 AM, 02:30 PM) y un resultado con guion
-            match_hora = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', contenido, re.IGNORECASE)
-            match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑ\s]+)', contenido, re.IGNORECASE)
+            # Identificar el nombre exacto de la lotería según tu lista oficial
+            nombre_loteria = ""
+            for oficial in LISTA_LOTERIAS_OFICIALES:
+                if oficial in texto_tarjeta:
+                    nombre_loteria = oficial
+                    break
             
-            if match_hora and match_res:
-                hora = match_hora.group(1).upper()
-                resultado_bruto = match_res.group(1).upper()
-                
-                if "PENDIENTE" in contenido.upper():
+            if not nombre_loteria:
+                continue
+
+            # Buscar todas las horas dentro de esta tarjeta específica
+            elementos_hora = tarjeta.find_all(string=re.compile(r'\d{1,2}:\d{2}\s*(?:AM|PM)', re.IGNORECASE))
+            
+            for elem_h in elementos_hora:
+                try:
+                    hora_texto = limpiar_texto(elem_h).upper()
+                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', hora_texto)
+                    if not match_h:
+                        continue
+                    hora = match_h.group(1).upper()
+
+                    # Buscar el resultado numérico/animalito asociado en los elementos cercanos
+                    padre_item = elem_h.parent
+                    resultado_final = ""
+                    
+                    for _ in range(4):
+                        if not padre_item:
+                            break
+                        txt_padre = padre_item.get_text(" ", strip=True)
+                        match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', txt_padre)
+                        if match_res and hora in txt_padre.upper():
+                            resultado_final = limpiar_texto(match_res.group(1)).upper()
+                            break
+                        padre_item = padre_item.parent
+
+                    if not resultado_final or "PENDIENTE" in resultado_final.upper():
+                        continue
+
+                    clave = (nombre_loteria, hora, resultado_final)
+
+                    if primera_ejecucion:
+                        resultados_enviados.add(clave)
+                    else:
+                        if clave not in resultados_enviados:
+                            item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                            if item_dict not in nuevos_encontrados:
+                                nuevos_encontrados.append(item_dict)
+                                resultados_enviados.add(clave)
+                except Exception:
                     continue
-
-                # Intentar deducir el nombre de la lotería del bloque o de sus padres cercanos
-                nombre_loteria = "LOTTO ACTIVO" # Valor por defecto seguro
-                for parent in bloque.parents:
-                    p_text = parent.get_text(" ", strip=True).upper()
-                    if "GRANJITA" in p_text and len(p_text) < 50:
-                        nombre_loteria = "LA GRANJITA"
-                        break
-                    elif "ACTIVO" in p_text and len(p_text) < 50:
-                        nombre_loteria = "LOTTO ACTIVO"
-                        break
-                    elif "SELVA" in p_text and len(p_text) < 50:
-                        nombre_loteria = "SELVA PLUS"
-                        break
-                    elif "GUACHARO" in p_text and len(p_text) < 50:
-                        nombre_loteria = "GUACHARO ACTIVO"
-                        break
-                    elif "GUACHARITO" in p_text and len(p_text) < 50:
-                        nombre_loteria = "GUACHARITO MILLONARIO"
-                        break
-
-                clave = (nombre_loteria, hora, resultado_bruto)
-
-                if primera_ejecucion:
-                    resultados_enviados.add(clave)
-                else:
-                    if clave not in resultados_enviados:
-                        nuevos_encontrados.append({
-                            'loteria': nombre_loteria,
-                            'hora': hora,
-                            'resultado': resultado_bruto,
-                            'clave': clave
-                        })
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total de resultados en memoria: {len(resultados_enviados)}")
+            print(f"🚀 Sincronización inicial lista. Total de registros base: {len(resultados_enviados)}")
             return
 
         for item_nuevo in nuevos_encontrados:
             mensaje = (
                 "🎯 AG HAROLD JOSE 🎯\n\n"
                 f"🎰 {item_nuevo['loteria']}\n"
-                f"🕒 {item_nuevo['hora']} {item_nuevo['resultado']}"
+                f"🕒 {item_novo['hora']} {item_nuevo['resultado']}"
             )
             
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
             payload = {"chat_id": CANAL_ID, "text": mensaje}
             requests.post(url, json=payload)
-            
-            resultados_enviados.add(item_nuevo['clave'])
             time.sleep(1)
 
     except Exception as e:
-        print(f"⚠️ Error en verificación: {e}")
+        print(f"⚠️ Error general: {e}")
 
 def loop_bot():
     verificar_resultados()
