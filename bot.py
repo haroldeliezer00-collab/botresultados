@@ -35,16 +35,13 @@ def verificar_resultados():
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
         
-        # Buscar contenedores de tarjetas individuales en la página
         tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
         
         nuevos_encontrados = []
 
         for tarjeta in tarjetas:
-            # Extracción robusta del nombre de la lotería
             nombre_loteria = ""
             
-            # 1. Intentar buscar en elementos específicos de título/encabezado
             posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
             for pt in posibles_titulos:
                 t_text = pt.get_text(" ", strip=True).upper()
@@ -53,7 +50,6 @@ def verificar_resultados():
                         nombre_loteria = t_text
                         break
             
-            # 2. Si no se encontró, buscar la primera línea válida de texto dentro de la tarjeta
             if not nombre_loteria:
                 lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
                 for linea in lineas:
@@ -61,13 +57,11 @@ def verificar_resultados():
                         nombre_loteria = linea
                         break
             
-            # Si aún está vacío o es demasiado largo, se descarta para evitar enviar datos erróneos
             if not nombre_loteria or len(nombre_loteria) > 40:
                 continue
             
             nombre_loteria = limpiar_texto(nombre_loteria)
 
-            # Buscar los sorteos individuales dentro de ESTA tarjeta específica
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
             if not slots_sorteo:
                 slots_sorteo = [tarjeta]
@@ -75,24 +69,20 @@ def verificar_resultados():
             for slot in slots_sorteo:
                 texto_slot = slot.get_text(" ", strip=True).upper()
                 
-                # Ignorar si el sorteo sigue pendiente
                 if "PENDIENTE" in texto_slot:
                     continue
                 
-                # Buscar la hora exacta
                 match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
                 if not match_h:
                     continue
                 hora = match_h.group(1).upper()
 
-                # Buscar el resultado (número - animalito)
                 match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', texto_slot)
                 if not match_res:
                     continue
                 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
 
-                # Clave única combinando el nombre real, la hora y el resultado
                 clave = (nombre_loteria, hora, resultado_final)
 
                 if primera_ejecucion:
@@ -112,7 +102,7 @@ def verificar_resultados():
         for item_nuevo in nuevos_encontrados:
             mensaje = (
                 "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 {item_nuevo['loteria']}\n"
+                f"🎰 *{item_nuevo['loteria']}*\n"
                 f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
             )
             
@@ -131,10 +121,11 @@ def loop_bot():
         schedule.run_pending()
         time.sleep(1)
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     t = Thread(target=loop_bot)
     t.daemon = True
     t.start()
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+                
