@@ -46,7 +46,7 @@ def verificar_resultados():
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
         
-        # Buscar contenedores principales de los sorteos
+        # Buscar contenedores principales de las loterías
         tarjetas = soup.find_all(['div', 'section'], class_=re.compile(r'flex|card|grid', re.IGNORECASE))
         
         nuevos_encontrados = []
@@ -54,7 +54,7 @@ def verificar_resultados():
         for tarjeta in tarjetas:
             texto_tarjeta = tarjeta.get_text(" ", strip=True).upper()
             
-            # Identificar el nombre exacto de la lotería según tu lista oficial
+            # Identificar el nombre oficial de la lotería
             nombre_loteria = ""
             for oficial in LISTA_LOTERIAS_OFICIALES:
                 if oficial in texto_tarjeta:
@@ -64,46 +64,41 @@ def verificar_resultados():
             if not nombre_loteria:
                 continue
 
-            # Buscar todas las horas dentro de esta tarjeta específica
-            elementos_hora = tarjeta.find_all(string=re.compile(r'\d{1,2}:\d{2}\s*(?:AM|PM)', re.IGNORECASE))
-            
-            for elem_h in elementos_hora:
-                try:
-                    hora_texto = limpiar_texto(elem_h).upper()
-                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', hora_texto)
-                    if not match_h:
-                        continue
-                    hora = match_h.group(1).upper()
+            # Buscar slots o cajitas individuales de cada sorteo dentro de la tarjeta
+            slots_sorteo = tarjeta.find_all(['div', 'li', 'span'], class_=re.compile(r'item|slot|draw|box|col', re.IGNORECASE))
+            if not slots_sorteo:
+                slots_sorteo = [tarjeta]
 
-                    # Buscar el resultado numérico/animalito asociado en los elementos cercanos
-                    padre_item = elem_h.parent
-                    resultado_final = ""
-                    
-                    for _ in range(4):
-                        if not padre_item:
-                            break
-                        txt_padre = padre_item.get_text(" ", strip=True)
-                        match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', txt_padre)
-                        if match_res and hora in txt_padre.upper():
-                            resultado_final = limpiar_texto(match_res.group(1)).upper()
-                            break
-                        padre_item = padre_item.parent
-
-                    if not resultado_final or "PENDIENTE" in resultado_final.upper():
-                        continue
-
-                    clave = (nombre_loteria, hora, resultado_final)
-
-                    if primera_ejecucion:
-                        resultados_enviados.add(clave)
-                    else:
-                        if clave not in resultados_enviados:
-                            item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                            if item_dict not in nuevos_encontrados:
-                                nuevos_encontrados.append(item_dict)
-                                resultados_enviados.add(clave)
-                except Exception:
+            for slot in slots_sorteo:
+                texto_slot = slot.get_text(" ", strip=True).upper()
+                
+                # Ignorar completamente si el slot sigue pendiente
+                if "PENDIENTE" in texto_slot:
                     continue
+                
+                # Buscar el patrón de la hora exacta en este slot
+                match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
+                if not match_h:
+                    continue
+                hora = match_h.group(1).upper()
+
+                # Buscar el resultado numérico y animalito correspondiente
+                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', texto_slot)
+                if not match_res:
+                    continue
+                
+                resultado_final = limpiar_texto(match_res.group(1)).upper()
+
+                clave = (nombre_loteria, hora, resultado_final)
+
+                if primera_ejecucion:
+                    resultados_enviados.add(clave)
+                else:
+                    if clave not in resultados_enviados:
+                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                        if item_dict not in nuevos_encontrados:
+                            nuevos_encontrados.append(item_dict)
+                            resultados_enviados.add(clave)
 
         if primera_ejecucion:
             primera_ejecucion = False
@@ -114,7 +109,7 @@ def verificar_resultados():
             mensaje = (
                 "🎯 AG HAROLD JOSE 🎯\n\n"
                 f"🎰 {item_nuevo['loteria']}\n"
-                f"🕒 {item_novo['hora']} {item_nuevo['resultado']}"
+                f"🕒 {item_nuevo['hora']} {item_nuevo['resultado']}"
             )
             
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -139,4 +134,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-                
+        
