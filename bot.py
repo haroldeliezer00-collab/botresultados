@@ -15,10 +15,21 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "¡El bot de resultados de lotería está activo y funcionando perfectamente!"
+    return "¡El bot de resultados AG HAROLD JOSE está activo!"
 
 resultados_enviados = set()
 primera_ejecucion = True
+
+LISTA_LOTERIAS_OFICIALES = [
+    "LOTTO ACTIVO", "LA GRANJITA", "SELVA PLUS", "GUACHARO ACTIVO", 
+    "LOTO CHAIMA", "RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA", 
+    "LOTTO ANIMALITO", "LOTTO PANTERA", "MONJE MILLONARIO", "LOTTO REAL", 
+    "LOTTO INTER", "CAZALOTON", "MEGA ANIMAL", "CENTENA ANIMALITOS", 
+    "CENTENA PLUS", "GUACHARITO MILLONARIO", "RULETA ACTIVA", "GRANJITA PLUS", 
+    "LA RICACHONA", "GUACA ACTIVA 37", "LOTTO MAX", "TROPI GANA", 
+    "CONDOR GANA", "GRANJA MILLONARIA", "FRUTI GANA", "GRANJAZO", 
+    "LOTTO GATO", "GATAZO", "ZOOLOGICO ACTIVO", "LOTTO RD"
+]
 
 def limpiar_texto(texto):
     return " ".join(texto.split())
@@ -41,20 +52,15 @@ def verificar_resultados():
                 nombre_loteria = ""
                 posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'div', 'span'])
                 
-                keywords = [
-                    "ACTIVO", "GRANJITA", "RULETA", "GUACHARITO", "GUACHARO", 
-                    "SELVO", "LOTTO", "QUINTA", "MAX", "GANA", "MILLONARIA", 
-                    "ZOO", "ANIMAL", "PANTERA", "REAL", "RD", "CHANCE", 
-                    "TROTAMUNDOS", "GOLPE", "SUERTE", "MEGA", "GATO", "ZOOLOGICO", "PLUS", "INTERNACIONAL"
-                ]
-
                 for tag in posibles_titulos:
-                    txt = limpiar_texto(tag.text)
-                    upper_txt = txt.upper()
-                    if any(k in upper_txt for k in keywords) and len(txt) > 2 and "AM" not in upper_txt and "PM" not in upper_txt and "PENDIENTE" not in upper_txt and "-" not in upper_txt:
-                        if len(txt) < 40:
-                            nombre_loteria = upper_txt.replace("IR", "").strip()
+                    txt = limpiar_texto(tag.text).upper()
+                    # Buscar coincidencia exacta o parcial con la lista oficial
+                    for oficial in LISTA_LOTERIAS_OFICIALES:
+                        if oficial in txt and len(txt) < 40 and "AM" not in txt and "PM" not in txt:
+                            nombre_loteria = oficial
                             break
+                    if nombre_loteria:
+                        break
 
                 if not nombre_loteria:
                     continue
@@ -121,14 +127,14 @@ def verificar_resultados():
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print("🚀 Bot en la nube sincronizado correctamente...")
+            print("🚀 Sincronización inicial completada. Esperando nuevos resultados...")
             return
 
         for item_nuevo in nuevos_encontrados:
             mensaje = (
-                "✅ NUEVO RESULTADO 🎰\n\n"
+                "🎯 AG HAROLD JOSE 🎯\n\n"
                 f"🎰 {item_nuevo['loteria']}\n"
-                f"🕒 {item_nuevo['hora']} - {item_nuevo['resultado']}"
+                f"🕒 {item_nuevo['hora']} {item_nuevo['resultado']}"
             )
             
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -143,17 +149,17 @@ def verificar_resultados():
 
 def loop_bot():
     verificar_resultados()
+    # Revisar cada 2 minutos para capturar el resultado apenas salga sin retrasos
     schedule.every(2).minutes.do(verificar_resultados)
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-if _name_ == '_main_':
-    # Arrancamos el bot en un hilo secundario
+if __name__ == '__main__':
     t = Thread(target=loop_bot)
     t.daemon = True
     t.start()
     
-    # Arrancamos Flask en el hilo principal usando el puerto que exige Render
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    
