@@ -20,17 +20,6 @@ def home():
 resultados_enviados = set()
 primera_ejecucion = True
 
-LISTA_LOTERIAS_OFICIALES = [
-    "LOTTO ACTIVO", "LA GRANJITA", "SELVA PLUS", "GUACHARO ACTIVO", 
-    "LOTO CHAIMA", "RULETON PERU", "RULETON COLOMBIA", "RULETON VENEZUELA", 
-    "LOTTO ANIMALITO", "LOTTO PANTERA", "MONJE MILLONARIO", "LOTTO REAL", 
-    "LOTTO INTER", "CAZALOTON", "MEGA ANIMAL", "CENTENA ANIMALITOS", 
-    "CENTENA PLUS", "GUACHARITO MILLONARIO", "RULETA ACTIVA", "GRANJITA PLUS", 
-    "LA RICACHONA", "GUACA ACTIVA 37", "LOTTO MAX", "TROPI GANA", 
-    "CONDOR GANA", "GRANJA MILLONARIA", "FRUTI GANA", "GRANJAZO", 
-    "LOTTO GATO", "GATAZO", "ZOOLOGICO ACTIVO", "LOTTO RD"
-]
-
 def limpiar_texto(texto):
     return " ".join(texto.split())
 
@@ -46,34 +35,30 @@ def verificar_resultados():
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
         
-        # Buscar contenedores de tarjetas individuales
+        # Buscar contenedores de tarjetas individuales de la página
         tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
         
         nuevos_encontrados = []
 
         for tarjeta in tarjetas:
-            # Extraer estrictamente el título de la tarjeta para evitar cruces de nombres
+            # Extraer DINÁMICAMENTE el título de la lotería directamente de la tarjeta de la web
             elemento_titulo = tarjeta.find(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto', re.IGNORECASE))
             
             texto_titulo = ""
             if elemento_titulo:
                 texto_titulo = elemento_titulo.get_text(" ", strip=True).upper()
             else:
-                # Si no hay etiqueta específica, buscar el primer texto disponible
-                texto_titulo = tarjeta.get_text(" ", strip=True).upper()
+                # Si no hay etiqueta de título específica, tomamos la primera línea del bloque
+                lineas = [l.strip() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
+                texto_titulo = lineas[0].upper() if lineas else ""
 
-            # Identificar el nombre oficial exacto que corresponde a esta tarjeta
-            nombre_loteria = ""
-            for oficial in LISTA_LOTERIAS_OFICIALES:
-                if oficial in texto_titulo:
-                    nombre_loteria = oficial
-                    break
-            
-            # Si la tarjeta no coincide exactamente con una lotería oficial, se ignora
-            if not nombre_loteria:
+            # Validar que el título sea un nombre válido (evitar textos vacíos, largos o pendientes)
+            if not texto_titulo or len(texto_titulo) > 35 or "PENDIENTE" in texto_titulo:
                 continue
+            
+            nombre_loteria = limpiar_texto(texto_titulo)
 
-            # Buscar los slots/sorteos individuales dentro de ESTA tarjeta específica
+            # Buscar los slots/sorteos individuales dentro de esta tarjeta
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
             if not slots_sorteo:
                 slots_sorteo = [tarjeta]
@@ -144,4 +129,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    
+            
