@@ -99,17 +99,40 @@ def verificar_resultados():
             print(f"🚀 Sincronización inicial lista. Total de registros base: {len(resultados_enviados)}")
             return
 
-        for item_nuevo in nuevos_encontrados:
-            mensaje = (
-                "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 *{item_nuevo['loteria']}*\n"
-                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
-            )
-            
+        if nuevos_encontrados:
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-            payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown"}
-            requests.post(url, json=payload)
-            time.sleep(1)
+
+            # 1. Primero envía todos los resultados individuales uno por uno
+            for item_nuevo in nuevos_encontrados:
+                mensaje_individual = (
+                    "🎯 AG HAROLD JOSE 🎯\n\n"
+                    f"🎰 *{item_nuevo['loteria']}*\n"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
+                )
+                payload_ind = {"chat_id": CANAL_ID, "text": mensaje_individual, "parse_mode": "Markdown"}
+                requests.post(url, json=payload_ind)
+                time.sleep(1)
+
+            # 2. Inmediatamente después, envía la tabla resumen consolidada
+            cuerpo_tabla = ""
+            for item in nuevos_encontrados:
+                loteria_cortada = item['loteria'][:15].ljust(15)
+                hora_cortada = item['hora'].ljust(8)
+                res_cortado = item['resultado'].ljust(15)
+                cuerpo_tabla += f"{loteria_cortada} | {hora_cortada} | {res_cortado}\n"
+
+            mensaje_tabla = (
+                "🎯 *AGENCIA HAROLD JOSE* 🎯\n"
+                "_RESUMEN DE RESULTADOS_\n\n"
+                "```text\n"
+                "LOTERÍA         | HORA     | RESULTADO\n"
+                "------------------------------------\n"
+                f"{cuerpo_tabla}"
+                "```\n"
+                "📲 _JUEGA SEGURO EN LÍNEA_"
+            )
+            payload_tabla = {"chat_id": CANAL_ID, "text": mensaje_tabla, "parse_mode": "Markdown"}
+            requests.post(url, json=payload_tabla)
 
     except Exception as e:
         print(f"⚠️ Error general: {e}")
@@ -128,4 +151,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-                
+                            
