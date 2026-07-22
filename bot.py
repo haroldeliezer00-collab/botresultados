@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import time
 import schedule
 from threading import Thread
-from Flask import Flask
+from flask import Flask
 import re
 
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
@@ -41,7 +41,7 @@ def verificar_resultados():
         nuevos_encontrados = []
 
         for tarjeta in tarjetas:
-            # Extraer exactamente el título que trae la tarjeta en la web (nombre real de la lotería)
+            # Extraer exactamente el título completo de la tarjeta de forma estricta
             elemento_titulo = tarjeta.find(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto', re.IGNORECASE))
             
             texto_titulo = ""
@@ -51,10 +51,11 @@ def verificar_resultados():
                 lineas = [l.strip() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
                 texto_titulo = lineas[0].upper() if lineas else ""
 
-            # Validar que el título sea válido y no contenga basura o estados pendientes
+            # Validar que el título sea válido
             if not texto_titulo or len(texto_titulo) > 40 or "PENDIENTE" in texto_titulo:
                 continue
             
+            # Asignar el nombre limpio completo (esto preservará RD INT, RDOMINICANA, etc. sin recortarlos)
             nombre_loteria = limpiar_texto(texto_titulo)
 
             # Buscar los sorteos individuales dentro de ESTA tarjeta específica
@@ -82,7 +83,7 @@ def verificar_resultados():
                 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
 
-                # Clave única combinando la lotería real, la hora y el resultado
+                # Clave única combinando el nombre completo real, la hora y el resultado
                 clave = (nombre_loteria, hora, resultado_final)
 
                 if primera_ejecucion:
@@ -128,4 +129,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-                                            
+                
