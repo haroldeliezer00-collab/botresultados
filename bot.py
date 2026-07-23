@@ -41,7 +41,6 @@ def enviar_saludo_matutino():
 
 def enviar_tasa_dolar():
     try:
-        # Consulta a la API pública de referencia cambiaria oficial (BCV)
         api_url = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar/bcv"
         response = requests.get(api_url, timeout=10)
         
@@ -66,6 +65,27 @@ def enviar_tasa_dolar():
         print("💵 Tasa del dólar enviada con éxito.")
     except Exception as e:
         print(f"⚠️ Error al obtener o enviar la tasa del dólar: {e}")
+
+def enviar_aviso_taquilla():
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        mensaje_promo = (
+            "🎯 *AGENCIA HAROLD JOSE* 🎯\n"
+            "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
+            "📢 *¡AVISO IMPORTANTE PARA NUESTROS JUGADORES!* 📢\n\n"
+            "Recuerda que para jugar con nosotros debes acceder primero a nuestro *Canal de WhatsApp* para verificar si la taquilla se encuentra activa el día de hoy:\n"
+            "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+            "📲 *Si la taquilla está activa*, puedes revisar nuestro catálogo y escribirnos directamente:\n"
+            "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
+            "💬 También estamos disponibles por Telegram:\n"
+            "👉 t.me/ag_haroldjose\n\n"
+            "¡Mucha suerte en sus jugadas! 🍀🔥"
+        )
+        payload = {"chat_id": CANAL_ID, "text": mensaje_promo, "parse_mode": "Markdown", "disable_web_page_preview": True}
+        requests.post(url, json=payload)
+        print("📢 Aviso de taquilla enviado con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al enviar el aviso de taquilla: {e}")
 
 def verificar_resultados():
     global primera_ejecucion
@@ -159,10 +179,12 @@ def verificar_resultados():
 
 def loop_bot():
     verificar_resultados()
-    # Programar saludo matutino a las 7:00 AM
+    # Programar eventos fijos del día
     schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    # Programar la tasa oficial del dólar BCV a la 1:00 PM (13:00)
+    schedule.every().day.at("09:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("13:00").do(enviar_tasa_dolar)
+    schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
+    schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     # Revisar los resultados de la lotería cada 2 minutos
     schedule.every(2).minutes.do(verificar_resultados)
     
@@ -177,4 +199,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-        
+    
