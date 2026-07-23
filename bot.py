@@ -1,4 +1,12 @@
 import os
+# Forzar la zona horaria de Venezuela para que el bot use tu hora local exactica
+os.environ['TZ'] = 'America/Caracas'
+try:
+    import time
+    time.tzset()
+except AttributeError:
+    pass # Compatible por si lo pruebas en Windows local
+
 import requests
 from bs4 import BeautifulSoup
 import time
@@ -294,11 +302,11 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
     
-    # Horarios programados diarios
+    # Horarios programados diarios (Ahora regidos por la hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_lote_pollas_2pm) # <--- Manda Súper Polla y Pozo Millonario secuenciados
+    schedule.every().day.at("14:00").do(enviar_lote_pollas_2pm)
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
