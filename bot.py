@@ -23,6 +23,7 @@ TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
+URL_POLLA_TARDE = 'https://srq.es/polla/superpollatarde'
 
 app = Flask('')
 
@@ -33,8 +34,9 @@ def home():
         "<b>Enlaces de prueba rápida:</b><br>"
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
-        "👉 <a href='/test/polla'>Probar Súper Polla Tarde</a><br>"
-        "👉 <a href='/test/pozo'>Probar Pozo Millonario</a><br>"
+        "👉 <a href='/test/polla'>Probar Súper Polla Tarde (2:00 PM)</a><br>"
+        "👉 <a href='/test/pozo'>Probar Pozo Millonario (2:00 PM)</a><br>"
+        "👉 <a href='/test/recordatorio'>Probar Recordatorio con Monto en Vivo (2:40 PM)</a><br>"
         "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a>"
     )
@@ -59,6 +61,11 @@ def test_polla():
 def test_pozo():
     enviar_pozo_millonario()
     return "¡Prueba ejecutada! Se envió el Pozo Millonario."
+
+@app.route('/test/recordatorio')
+def test_recordatorio():
+    enviar_recordatorio_super_polla()
+    return "¡Prueba ejecutada! Se envió el recordatorio con monto en vivo."
 
 @app.route('/test/bcv')
 def test_bcv():
@@ -206,6 +213,43 @@ def enviar_pozo_millonario():
     except Exception as e:
         print(f"⚠️ Error al enviar el Pozo Millonario: {e}")
 
+def obtener_monto_acumulado_web():
+    """Entra a la página web de la polla y extrae el monto actual o estado en vivo"""
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+        response = requests.get(URL_POLLA_TARDE, headers=headers, timeout=10, verify=False)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            texto_completo = soup.get_text(" ", strip=True)
+            # Buscamos alguna coincidencia de montos o números con Bs o formato de dinero en la página
+            match = re.search(r'([\d\.,]+\s*Bs\.?|Bs\.?\s*[\d\.,]+)', texto_completo, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return "¡Revisa el enlace de progreso en vivo!"
+    except Exception as e:
+        print(f"⚠️ Error leyendo la web de la polla: {e}")
+        return "¡Monto activo en la web!"
+
+def enviar_recordatorio_super_polla():
+    try:
+        monto_actual = obtener_monto_acumulado_web()
+        
+        caption = (
+            "⚠️ *¡ATENCIÓN JUGADORES! QUEDAN POCOS MINUTOS* ⚠️\n\n"
+            "🐔 *SÚPER POLLA MILLONARIA (TURNO TARDE)* 🐔\n\n"
+            f"📈 *Monto / Acumulado actual en juego:* {monto_actual}\n"
+            "⏰ *Cierre de sellado:* ¡A las 2:50 PM en punto!\n\n"
+            "📊 *Progreso en vivo:* https://srq.es/polla/superpollatarde\n"
+            "📲 *Escríbenos ya para asegurar tu puesto:* https://wa.link/uhefij\n\n"
+            "¡No te quedes fuera de este sorteo y a ganar! 🍀🔥"
+        )
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
+        requests.post(url, json=payload)
+        print("📢 Recordatorio con monto en vivo enviado con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al enviar el recordatorio de la Polla: {e}")
+
 def enviar_lote_pollas_2pm():
     enviar_super_polla()
     time.sleep(3)
@@ -302,11 +346,12 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
     
-    # Horarios programados diarios (Ahora regidos por la hora de Venezuela)
+    # Horarios programados diarios (Hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("14:00").do(enviar_lote_pollas_2pm)
+    schedule.every().day.at("14:40").do(enviar_recordatorio_super_polla) # <--- Dispara el aviso con el monto en vivo a las 2:40 PM
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
