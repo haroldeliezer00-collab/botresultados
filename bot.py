@@ -20,7 +20,36 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "¡El bot de resultados AG HAROLD JOSE está activo!"
+    return (
+        "¡El bot de resultados AG HAROLD JOSE está activo!<br><br>"
+        "<b>Enlaces de prueba rápida:</b><br>"
+        "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
+        "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
+        "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
+        "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a>"
+    )
+
+# --- RUTAS DE PRUEBA MANUAL ---
+@app.route('/test/saludo')
+def test_saludo():
+    enviar_saludo_matutino()
+    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió el saludo matutino."
+
+@app.route('/test/taquilla')
+def test_taquilla():
+    enviar_aviso_taquilla()
+    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió el aviso de taquilla."
+
+@app.route('/test/bcv')
+def test_bcv():
+    enviar_tasa_dolar()
+    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió la tasa del BCV."
+
+@app.route('/test/resultados')
+def test_resultados():
+    verificar_resultados()
+    return "¡Prueba ejecutada! Se forzó la revisión de los resultados en la web."
+# -----------------------------
 
 resultados_enviados = set()
 primera_ejecucion = True
@@ -196,7 +225,6 @@ def verificar_resultados():
                     continue
                 hora = match_h.group(1).upper()
 
-                # Actualizado para aceptar nombres compuestos de dos palabras (ej. PAVO REAL)
                 match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
                 if not match_res:
                     continue
