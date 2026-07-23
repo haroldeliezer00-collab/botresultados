@@ -6,10 +6,15 @@ import schedule
 from threading import Thread
 from flask import Flask
 import re
+import urllib3
+
+# Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
+URL_BCV = 'https://www.bcv.org.ve/'
 
 app = Flask('')
 
@@ -53,8 +58,7 @@ ANIMAL_EMOJIS = {
     'PESCADO': '🐟',
     'ZEBRA': '🦓',
     'CIERVO': '🦌',
-    'CAMELOS': '🐫',
-    'BALLENA': '🐳'
+    'CAMELOS': '🐫'
 }
 
 def limpiar_texto(texto):
@@ -89,28 +93,32 @@ def enviar_saludo_matutino():
 
 def enviar_tasa_dolar():
     try:
-        api_url = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar/bcv"
-        response = requests.get(api_url, timeout=10)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get(URL_BCV, headers=headers, timeout=15, verify=False)
         
         precio_dolar = "No disponible"
-        fecha_actualizacion = ""
         
         if response.status_code == 200:
-            data = response.json()
-            precio_dolar = data.get('price', 'N/A')
-            fecha_actualizacion = data.get('last_update', '')
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Extraer directamente del bloque oficial del BCV
+            dolar_div = soup.find('div', id='dolar')
+            if dolar_div:
+                strong_elem = dolar_div.find('strong')
+                if strong_elem:
+                    precio_dolar = strong_elem.get_text(strip=True)
 
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         mensaje = (
             "💵 *TASA OFICIAL BCV* 💵\n\n"
             f"🏦 *Moneda:* Dólar Estadounidense\n"
-            f"📈 *Precio Oficial:* Bs. *{precio_dolar}*\n"
-            f"📅 *Actualización:* {fecha_actualizacion}\n\n"
-            "🔗 Fuente: [PyDolarVenezuela](https://pydolarvenezuela.com)"
+            f"📈 *Precio Oficial:* Bs. *{precio_dolar}*\n\n"
+            "🔗 Fuente: [Banco Central de Venezuela](https://www.bcv.org.ve/)"
         )
         payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown", "disable_web_page_preview": True}
         requests.post(url, json=payload)
-        print("💵 Tasa del dólar enviada con éxito.")
+        print("💵 Tasa del dólar oficial enviada con éxito.")
     except Exception as e:
         print(f"⚠️ Error al obtener o enviar la tasa del dólar: {e}")
 
