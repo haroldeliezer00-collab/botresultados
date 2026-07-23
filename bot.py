@@ -31,9 +31,13 @@ def enviar_saludo_matutino():
             "🌅 *¡Buenos días a todos!* 🌅\n\n"
             "Ya arrancamos un nuevo día con la mejor energía. "
             "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+            "📢 *Nuestros canales oficiales:*\n"
+            "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
+            "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
+            "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
             "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
         )
-        payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown"}
+        payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown", "disable_web_page_preview": True}
         requests.post(url, json=payload)
         print("☀️ Saludo matutino enviado con éxito.")
     except Exception as e:
@@ -121,7 +125,7 @@ def verificar_resultados():
                         break
             
             if not nombre_loteria or len(nombre_loteria) > 40:
-                continue
+                        continue
             
             nombre_loteria = limpiar_texto(nombre_loteria)
 
@@ -179,12 +183,23 @@ def verificar_resultados():
 
 def loop_bot():
     verificar_resultados()
-    # Programar eventos fijos del día
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    schedule.every().day.at("09:30").do(enviar_aviso_taquilla)
-    schedule.every().day.at("13:00").do(enviar_tasa_dolar)
+    
+    # Horarios programados (ajustados a UTC para que coincidan con la hora de Venezuela):
+    # - 7:00 AM Venezuela -> 11:00 UTC
+    schedule.every().day.at("11:00").do(enviar_saludo_matutino)
+    
+    # - 9:30 AM Venezuela -> 13:30 UTC
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
+    
+    # - 1:00 PM Venezuela (Tasa BCV) -> 17:00 UTC
+    schedule.every().day.at("17:00").do(enviar_tasa_dolar)
+    
+    # - 1:30 PM Venezuela -> 17:30 UTC
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
+    
+    # - 5:30 PM Venezuela -> 21:30 UTC
+    schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
+    
     # Revisar los resultados de la lotería cada 2 minutos
     schedule.every(2).minutes.do(verificar_resultados)
     
@@ -199,4 +214,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    
+        
