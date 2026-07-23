@@ -25,8 +25,9 @@ def home():
         "<b>Enlaces de prueba rápida:</b><br>"
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
-        "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
         "👉 <a href='/test/polla'>Probar Súper Polla Tarde</a><br>"
+        "👉 <a href='/test/pozo'>Probar Pozo Millonario</a><br>"
+        "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a>"
     )
 
@@ -41,15 +42,20 @@ def test_taquilla():
     enviar_aviso_taquilla()
     return "¡Prueba ejecutada! Se envió el aviso de taquilla."
 
-@app.route('/test/bcv')
-def test_bcv():
-    enviar_tasa_dolar()
-    return "¡Prueba ejecutada! Se envió la tasa del BCV."
-
 @app.route('/test/polla')
 def test_polla():
     enviar_super_polla()
     return "¡Prueba ejecutada! Se envió la Súper Polla Tarde."
+
+@app.route('/test/pozo')
+def test_pozo():
+    enviar_pozo_millonario()
+    return "¡Prueba ejecutada! Se envió el Pozo Millonario."
+
+@app.route('/test/bcv')
+def test_bcv():
+    enviar_tasa_dolar()
+    return "¡Prueba ejecutada! Se envió la tasa del BCV."
 
 @app.route('/test/resultados')
 def test_resultados():
@@ -85,7 +91,7 @@ def limpiar_memoria_diaria():
     global resultados_enviados, primera_ejecucion
     resultados_enviados.clear()
     primera_ejecucion = True
-    print("🧹 Memoria de resultados limpiada para arrancar el nuevo día sin peso acumulado.")
+    print("🧹 Memoria de resultados limpiada para arrancar el nuevo día.")
 
 def enviar_saludo_matutino():
     try:
@@ -166,14 +172,36 @@ def enviar_super_polla():
             "📲 *Para jugar y asegurar tu puesto:* https://wa.link/uhefij\n\n"
             "¡No te quedes sin participar y a ganar! 🍀🔥"
         )
-        
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
         requests.post(url, json=payload)
-            
         print("🐔 Súper Polla Tarde enviada con éxito.")
     except Exception as e:
         print(f"⚠️ Error al enviar la Súper Polla: {e}")
+
+def enviar_pozo_millonario():
+    try:
+        caption = (
+            "💰 *POZO MILLONARIO (3:00 PM - 7:00 PM)* 💰\n\n"
+            "🎟️ *Costo por puesto:* 100 Bs\n"
+            "⏰ *Horario para sellar:* 2:00 PM - 2:50 PM\n"
+            "🏆 *Nota:* Premia segundo lugar sin haber ganador de primer lugar\n\n"
+            "📖 *¿Cómo se juega?:* [Ver información detallada](https://wa.me/p/25540557112229571/584124489363)\n"
+            "📊 *Progreso en vivo:* https://tr.ee/pozo-millonario-tarde\n\n"
+            "📲 *Para jugar y asegurar tu puesto:* https://wa.link/uhefij\n\n"
+            "¡No te quedes sin participar y a ganar! 🍀🔥"
+        )
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
+        requests.post(url, json=payload)
+        print("💰 Pozo Millonario enviado con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al enviar el Pozo Millonario: {e}")
+
+def enviar_lote_pollas_2pm():
+    enviar_super_polla()
+    time.sleep(3)
+    enviar_pozo_millonario()
 
 def verificar_resultados():
     global primera_ejecucion
@@ -236,8 +264,6 @@ def verificar_resultados():
                 else:
                     if clave not in resultados_enviados:
                         item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                        if item_dict not in novos_encontrados if 'novos_encontrados' in locals() else True:
-                            pass
                         if item_dict not in nuevos_encontrados:
                             nuevos_encontrados.append(item_dict)
                             resultados_enviados.add(clave)
@@ -269,10 +295,10 @@ def loop_bot():
     verificar_resultados()
     
     # Horarios programados diarios
-    schedule.every().day.at("00:00").do(limpiar_memoria_diaria) # <--- Limpia memoria cada medianoche
+    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_super_polla)
+    schedule.every().day.at("14:00").do(enviar_lote_pollas_2pm) # <--- Manda Súper Polla y Pozo Millonario secuenciados
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
