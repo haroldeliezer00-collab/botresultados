@@ -15,6 +15,7 @@ TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
+URL_POLLA = 'https://srq.es/polla/superpollatarde'
 
 app = Flask('')
 
@@ -26,6 +27,7 @@ def home():
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
         "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
+        "👉 <a href='/test/polla'>Probar Súper Polla Tarde</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a>"
     )
 
@@ -33,17 +35,22 @@ def home():
 @app.route('/test/saludo')
 def test_saludo():
     enviar_saludo_matutino()
-    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió el saludo matutino."
+    return "¡Prueba ejecutada! Se envió el saludo matutino."
 
 @app.route('/test/taquilla')
 def test_taquilla():
     enviar_aviso_taquilla()
-    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió el aviso de taquilla."
+    return "¡Prueba ejecutada! Se envió el aviso de taquilla."
 
 @app.route('/test/bcv')
 def test_bcv():
     enviar_tasa_dolar()
-    return "¡Prueba ejecutada! Revisa tu canal de Telegram: se envió la tasa del BCV."
+    return "¡Prueba ejecutada! Se envió la tasa del BCV."
+
+@app.route('/test/polla')
+def test_polla():
+    enviar_super_polla()
+    return "¡Prueba ejecutada! Se envió la Súper Polla Tarde."
 
 @app.route('/test/resultados')
 def test_resultados():
@@ -54,41 +61,15 @@ def test_resultados():
 resultados_enviados = set()
 primera_ejecucion = True
 
-# Diccionario de emojis para los animalitos (incluyendo nombres compuestos)
 ANIMAL_EMOJIS = {
-    'CARNERO': '🐏',
-    'TORO': '🐂',
-    'CIEMPIES': '🐛',
-    'ALACRAN': '🦂',
-    'LEON': '🦁',
-    'RANA': '🐸',
-    'PERICO': '🦜',
-    'CHIVO': '🐐',
-    'COCHINO': '🐖',
-    'GALLO': '🐓',
-    'CARACOL': '🐌',
-    'CULEBRA': '🐍',
-    'ZAMURO': '🐦‍⬛',
-    'GATO': '🐈',
-    'BALLENA': '🐋',
-    'CAIMAN': '🐊',
-    'AGUILA': '🦅',
-    'TIGRE': '🐅',
-    'PAVITO': '🦃',
-    'PAVO REAL': '🦚',
-    'BURRO': '🫏',
-    'MONO': '🐒',
-    'IGUANA': '🦎',
-    'BUFALO': '🐃',
-    'GALLINA': '🐔',
-    'VACA': '🐄',
-    'PERRO': '🐕',
-    'ZORRO': '🦊',
-    'OSO': '🐻',
-    'PESCADO': '🐟',
-    'ZEBRA': '🦓',
-    'CIERVO': '🦌',
-    'CAMELOS': '🐫'
+    'CARNERO': '🐏', 'TORO': '🐂', 'CIEMPIES': '🐛', 'ALACRAN': '🦂',
+    'LEON': '🦁', 'RANA': '🐸', 'PERICO': '🦜', 'CHIVO': '🐐',
+    'COCHINO': '🐖', 'GALLO': '🐓', 'CARACOL': '🐌', 'CULEBRA': '🐍',
+    'ZAMURO': '🐦‍⬛', 'GATO': '🐈', 'BALLENA': '🐋', 'CAIMAN': '🐊',
+    'AGUILA': '🦅', 'TIGRE': '🐅', 'PAVITO': '🦃', 'PAVO REAL': '🦚',
+    'BURRO': '🫏', 'MONO': '🐒', 'IGUANA': '🦎', 'BUFALO': '🐃',
+    'GALLINA': '🐔', 'VACA': '🐄', 'PERRO': '🐕', 'ZORRO': '🦊',
+    'OSO': '🐻', 'PESCADO': '🐟', 'ZEBRA': '🦓', 'CIERVO': '🦌', 'CAMELOS': '🐫'
 }
 
 def limpiar_texto(texto):
@@ -117,19 +98,15 @@ def enviar_saludo_matutino():
         )
         payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown", "disable_web_page_preview": True}
         requests.post(url, json=payload)
-        print("☀️ Saludo matutino enviado con éxito.")
+        print("☀️ Saludo matutino enviado.")
     except Exception as e:
-        print(f"⚠️ Error al enviar el saludo matutino: {e}")
+        print(f"⚠️ Error en saludo matutino: {e}")
 
 def enviar_tasa_dolar():
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
         response = requests.get(URL_BCV, headers=headers, timeout=15, verify=False)
-        
         precio_dolar = "No disponible"
-        
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             dolar_div = soup.find('div', id='dolar')
@@ -147,9 +124,9 @@ def enviar_tasa_dolar():
         )
         payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown", "disable_web_page_preview": True}
         requests.post(url, json=payload)
-        print("💵 Tasa del dólar oficial enviada con éxito.")
+        print("💵 Tasa BCV enviada.")
     except Exception as e:
-        print(f"⚠️ Error al obtener o enviar la tasa del dólar: {e}")
+        print(f"⚠️ Error en tasa BCV: {e}")
 
 def enviar_aviso_taquilla():
     try:
@@ -168,16 +145,44 @@ def enviar_aviso_taquilla():
         )
         payload = {"chat_id": CANAL_ID, "text": mensaje_promo, "parse_mode": "Markdown", "disable_web_page_preview": True}
         requests.post(url, json=payload)
-        print("📢 Aviso de taquilla enviado con éxito.")
+        print("📢 Aviso de taquilla enviado.")
     except Exception as e:
-        print(f"⚠️ Error al enviar el aviso de taquilla: {e}")
+        print(f"⚠️ Error en aviso de taquilla: {e}")
+
+def enviar_super_polla():
+    try:
+        caption = (
+            "🐔 *SÚPER POLLA MILLONARIA (TURNO TARDE)* 🐔\n\n"
+            "🕒 *Horario del turno:* 3:00 PM - 7:00 PM\n"
+            "🎟️ *Costo por puesto:* 200 Bs\n"
+            "⏰ *Horario para sellar:* 2:00 PM - 2:50 PM\n\n"
+            "📖 *¿Cómo se juega?:* [Ver información detallada](https://wa.me/p/25696750769917708/584124489363)\n"
+            "📊 *Progreso en vivo:* https://srq.es/polla/superpollatarde\n\n"
+            "📲 *Para jugar y asegurar tu puesto:* https://wa.link/uhefij\n\n"
+            "¡No te quedes sin participar y a ganar! 🍀🔥"
+        )
+        
+        # Si tienes la imagen subida en Render como 'super_polla.jpg', la envía con foto
+        if os.path.exists("super_polla.jpg"):
+            url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+            with open("super_polla.jpg", "rb") as photo:
+                payload = {"chat_id": CANAL_ID, "caption": caption, "parse_mode": "Markdown"}
+                files = {"photo": photo}
+                requests.post(url, data=payload, files=files)
+        else:
+            # Si no está la imagen, manda el mensaje de texto formateado para que nunca falle
+            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+            payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
+            requests.post(url, json=payload)
+            
+        print("🐔 Súper Polla Tarde enviada con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al enviar la Súper Polla: {e}")
 
 def verificar_resultados():
     global primera_ejecucion
     try:
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
         if respuesta.status_code != 200:
             return
@@ -189,7 +194,6 @@ def verificar_resultados():
 
         for tarjeta in tarjetas:
             nombre_loteria = ""
-            
             posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
             for pt in posibles_titulos:
                 t_text = pt.get_text(" ", strip=True).upper()
@@ -216,7 +220,6 @@ def verificar_resultados():
 
             for slot in slots_sorteo:
                 texto_slot = slot.get_text(" ", strip=True).upper()
-                
                 if "PENDIENTE" in texto_slot:
                     continue
                 
@@ -230,7 +233,6 @@ def verificar_resultados():
                     continue
                 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
-
                 clave = (nombre_loteria, hora, resultado_final)
 
                 if primera_ejecucion:
@@ -244,7 +246,7 @@ def verificar_resultados():
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total de registros base: {len(resultados_enviados)}")
+            print(f"🚀 Sincronización inicial lista. Total registros base: {len(resultados_enviados)}")
             return
 
         for item_nuevo in nuevos_encontrados:
@@ -268,8 +270,10 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
     
+    # Horarios programados diarios
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
+    schedule.every().day.at("14:00").do(enviar_super_polla)    # <--- Publicidad de la Súper Polla a las 2:00 PM
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
