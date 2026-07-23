@@ -112,14 +112,69 @@ resultados_enviados = set()
 primera_ejecucion = True
 
 ANIMAL_EMOJIS = {
-    'CARNERO': '🐏', 'TORO': '🐂', 'CIEMPIES': '🐛', 'ALACRAN': 'ÑA',
-    'LEON': '🦁', 'RANA': '🐸', 'PERICO': '🦜', 'CHIVO': '🐐',
-    'COCHINO': '🐖', 'GALLO': '🐓', 'CARACOL': '🐌', 'CULEBRA': '🐍',
-    'ZAMURO': '🐦‍⬛', 'GATO': '🐈', 'BALLENA': '🐋', 'CAIMAN': '🐊',
-    'AGUILA': '🦅', 'TIGRE': '🐅', 'PAVITO': '🦃', 'PAVO REAL': '🦚',
-    'BURRO': '🫏', 'MONO': '🐒', 'IGUANA': '🦎', 'BUFALO': '🐃',
-    'GALLINA': '🐔', 'VACA': '🐄', 'PERRO': '🐕', 'ZORRO': '🦊',
-    'OSO': '🐻', 'PESCADO': '🐟', 'ZEBRA': '🦓', 'CIERVO': '🦌', 'CAMELOS': '🐫'
+    'CARNERO': '🐏', 
+    'TORO': '🐂', 
+    'CIEMPIÉS': '🐛', 
+    'CIEMPIES': '🐛',
+    'ALACRAN': '🦂',
+    'LEÓN': '🦁', 
+    'LEON': '🦁',
+    'RANA': '🐸', 
+    'PERICO': '🦜', 
+    'CHIVO': '🐐',
+    'COCHINO': '🐖', 
+    'GALLO': '🐓', 
+    'CARACOL': '🐌', 
+    'CULEBRA': '🐍',
+    'ZAMURO': '🐦‍⬛', 
+    'GATO': '🐈', 
+    'BALLENA': '🐋', 
+    'CAIMAN': '🐊',
+    'CAIMÁN': '🐊',
+    'ÁGUILA': '🦅', 
+    'AGUILA': '🦅',
+    'TIGRE': '🐅', 
+    'PAVO': '🦃', 
+    'PAVITO': '🦃',
+    'PAVO REAL': '🦚',
+    'BURRO': '🫏', 
+    'MONO': '🐵', 
+    'IGUANA': '🦎', 
+    'BUFALO': '🐃',
+    'BÚFALO': '🐃',
+    'GALLINA': '🐔', 
+    'VACA': '🐄', 
+    'PERRO': '🐶', 
+    'ZORRO': '🦊',
+    'OSO': '🐻', 
+    'PESCADO': '🐟', 
+    'CEBRA': '🦓', 
+    'ZEBRA': '🦓',
+    'VENADO': '🦌', 
+    'CIERVO': '🦌',
+    'CAMELLO': '🐫',
+    'CAMELOS': '🐫',
+    'DELFIN': '🐬',
+    'DÉLFIN': '🐬',
+    'BISONTE': '🦬', 
+    'HORMIGA': '🐜', 
+    'AVISPA': '🐝',
+    'GRILLO': '🦗', 
+    'PUERCOESPIN': '🦔',
+    'PUERCOESPÍN': '🦔',
+    'ELEFANTE': '🐘',
+    'LECHUZA': '🦉',
+    'PALOMA': '🐦',
+    'JIRAFA': '🦒',
+    'RATON': '🐭',
+    'RATÓN': '🐭',
+    'CISNE': '🦢',
+    'PATO': '🦆',
+    'CONEJO': '🐰',
+    'CABALLO': '🐎',
+    'PANTERA': '🐆',
+    'PUMA': '🐆',
+    'CUCARACHA': '🪳'
 }
 
 def limpiar_texto(texto):
@@ -434,19 +489,4 @@ def verificar_resultados():
             return
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
-        tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
-        
-        nuevos_encontrados = []
-
-        for tarjeta in tarjetas:
-            nombre_loteria = ""
-            posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
-            for pt in posibles_titulos:
-                t_text = pt.get_text(" ", strip=True).upper()
-                if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
-                    if t_text not in ["WINBIG", "RESULTADOS"]:
-                        nombre_loteria = t_text
-                        break
-            
-            if not nombre_loteria:
-                lineas = [l.strip(
+        tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNO
