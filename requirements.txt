@@ -1,4 +1,6 @@
-requests
+Flask
 beautifulsoup4
+requests
+pytz
 schedule
-flask
+urllib3
