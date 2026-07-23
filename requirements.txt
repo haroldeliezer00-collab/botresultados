@@ -1,6 +1,5 @@
 Flask
 beautifulsoup4
 requests
-pytz
 schedule
 urllib3
