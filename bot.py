@@ -111,7 +111,7 @@ def enviar_saludo_matutino():
             "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
             "📢 *Nuestros canales oficiales:*\n"
             "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-            "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
+            "📸 Instagram: https://www.instagram.com/agharold\\_jose (@agharold\\_jose)\n"
             "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
             "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
         )
@@ -163,7 +163,7 @@ def enviar_aviso_taquilla():
             "📲 *Si la taquilla está activa*, puedes revisar nuestro catálogo y escribirnos directamente:\n"
             "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
             "💬 También estamos disponibles por Telegram:\n"
-            "👉 t.me/ag_haroldjose\n\n"
+            "👉 t.me/ag\\_haroldjose\n\n"
             "¡Mucha suerte en sus jugadas! 🍀🔥"
         )
         payload = {"chat_id": CANAL_ID, "text": mensaje_promo, "parse_mode": "Markdown", "disable_web_page_preview": True}
