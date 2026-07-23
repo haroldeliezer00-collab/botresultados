@@ -25,7 +25,7 @@ def home():
 resultados_enviados = set()
 primera_ejecucion = True
 
-# Diccionario de emojis para los animalitos
+# Diccionario de emojis para los animalitos (incluyendo nombres compuestos)
 ANIMAL_EMOJIS = {
     'CARNERO': '🐏',
     'TORO': '🐂',
@@ -46,6 +46,7 @@ ANIMAL_EMOJIS = {
     'AGUILA': '🦅',
     'TIGRE': '🐅',
     'PAVITO': '🦃',
+    'PAVO REAL': '🦚',
     'BURRO': '🫏',
     'MONO': '🐒',
     'IGUANA': '🦎',
@@ -102,7 +103,6 @@ def enviar_tasa_dolar():
         
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Extraer directamente del bloque oficial del BCV
             dolar_div = soup.find('div', id='dolar')
             if dolar_div:
                 strong_elem = dolar_div.find('strong')
@@ -196,7 +196,8 @@ def verificar_resultados():
                     continue
                 hora = match_h.group(1).upper()
 
-                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', texto_slot)
+                # Actualizado para aceptar nombres compuestos de dos palabras (ej. PAVO REAL)
+                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
                 if not match_res:
                     continue
                 
@@ -239,14 +240,12 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
     
-    # Horarios programados ajustados a la hora de Venezuela (UTC):
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
     
-    # Revisar los resultados de la lotería cada 2 minutos
     schedule.every(2).minutes.do(verificar_resultados)
     
     while True:
