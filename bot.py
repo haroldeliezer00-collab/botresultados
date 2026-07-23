@@ -15,14 +15,13 @@ TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL_ID = '@pruebajsj'
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
-URL_POLLA = 'https://srq.es/polla/superpollatarde'
 
 app = Flask('')
 
 @app.route('/')
 def home():
     return (
-        "¡El bot de resultados AG HAROLD JOSE está activo!<br><br>"
+        "¡El bot de resultados AG HAROLD JOSE está activo y blindado!<br><br>"
         "<b>Enlaces de prueba rápida:</b><br>"
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
@@ -55,7 +54,7 @@ def test_polla():
 @app.route('/test/resultados')
 def test_resultados():
     verificar_resultados()
-    return "¡Prueba ejecutada! Se forzó la revisión de los resultados en la web."
+    return "¡Prueba ejecutada! Se forzó la revisión de los resultados."
 # -----------------------------
 
 resultados_enviados = set()
@@ -81,6 +80,12 @@ def obtener_emoji(resultado_texto):
         nombre_animal = partes[1].strip().upper()
         return ANIMAL_EMOJIS.get(nombre_animal, '')
     return ''
+
+def limpiar_memoria_diaria():
+    global resultados_enviados, primera_ejecucion
+    resultados_enviados.clear()
+    primera_ejecucion = True
+    print("🧹 Memoria de resultados limpiada para arrancar el nuevo día sin peso acumulado.")
 
 def enviar_saludo_matutino():
     try:
@@ -162,18 +167,9 @@ def enviar_super_polla():
             "¡No te quedes sin participar y a ganar! 🍀🔥"
         )
         
-        # Si tienes la imagen subida en Render como 'super_polla.jpg', la envía con foto
-        if os.path.exists("super_polla.jpg"):
-            url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
-            with open("super_polla.jpg", "rb") as photo:
-                payload = {"chat_id": CANAL_ID, "caption": caption, "parse_mode": "Markdown"}
-                files = {"photo": photo}
-                requests.post(url, data=payload, files=files)
-        else:
-            # Si no está la imagen, manda el mensaje de texto formateado para que nunca falle
-            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-            payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
-            requests.post(url, json=payload)
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        payload = {"chat_id": CANAL_ID, "text": caption, "parse_mode": "Markdown", "disable_web_page_preview": False}
+        requests.post(url, json=payload)
             
         print("🐔 Súper Polla Tarde enviada con éxito.")
     except Exception as e:
@@ -240,6 +236,8 @@ def verificar_resultados():
                 else:
                     if clave not in resultados_enviados:
                         item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                        if item_dict not in novos_encontrados if 'novos_encontrados' in locals() else True:
+                            pass
                         if item_dict not in nuevos_encontrados:
                             nuevos_encontrados.append(item_dict)
                             resultados_enviados.add(clave)
@@ -271,9 +269,10 @@ def loop_bot():
     verificar_resultados()
     
     # Horarios programados diarios
+    schedule.every().day.at("00:00").do(limpiar_memoria_diaria) # <--- Limpia memoria cada medianoche
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_super_polla)    # <--- Publicidad de la Súper Polla a las 2:00 PM
+    schedule.every().day.at("14:00").do(enviar_super_polla)
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
