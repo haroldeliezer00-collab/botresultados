@@ -8,18 +8,16 @@ from flask import Flask
 
 app = Flask(__name__)
 
-# Configuración del Bot de Telegram (puedes usar variables de entorno en Render)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "TU_TOKEN_AQUI")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "TU_CHAT_ID_AQUI")
 
-# Cabeceras con comillas cerradas correctamente
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
 @app.route('/')
 def home():
-    return "Bot de Resultados y Avisos Activo y Funcionando"
+    return "Bot de Resultados y Avisos Activo y Blindado"
 
 def enviar_mensaje(texto):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -29,10 +27,21 @@ def enviar_mensaje(texto):
         "parse_mode": "Markdown"
     }
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=10)
         return response.json()
     except Exception as e:
         print(f"Error al enviar mensaje a Telegram: {e}")
+
+def consultar_resultados_y_avisos():
+    # Aquí colocas tu lógica de scraping para los resultados de las 4:30 y demás horas
+    try:
+        # Ejemplo de consulta web segura:
+        # response = requests.get("URL_RESULTADOS", headers=headers, timeout=10)
+        # if response.status_code == 200:
+        #     # procesar y enviar resultados...
+        pass
+    except Exception as e:
+        print(f"Error menor en scraping (ignorado para evitar caídas): {e}")
 
 def loop_automatico():
     venezuela_tz = pytz.timezone('America/Caracas')
@@ -44,12 +53,15 @@ def loop_automatico():
             ahora = datetime.now(venezuela_tz)
             hora_actual = ahora.strftime("%H:%M")
             
-            # Reiniciar banderas a la medianoche para el día siguiente
+            # Reiniciar banderas a la medianoche
             if hora_actual == "00:00":
                 enviado_manana = False
                 enviado_tarde = False
             
-            # Aviso de la mañana: 7:40 AM (10 minutos antes del cierre de las 7:50 AM)
+            # Ejecutar consulta de resultados en cada ciclo
+            consultar_resultados_y_avisos()
+            
+            # Aviso de la mañana: 7:40 AM (10 minutos antes de las 7:50 AM)
             if hora_actual == "07:40" and not enviado_manana:
                 mensaje = (
                     "⚠️ *¡ATENCIÓN SEÑORES!* ⚠️\n"
@@ -64,7 +76,7 @@ def loop_automatico():
                 enviar_mensaje(mensaje)
                 enviado_manana = True
             
-            # Aviso de la tarde: 4:40 PM (10 minutos antes del cierre de las 4:50 PM)
+            # Aviso de la tarde: 4:40 PM (10 minutos antes de las 4:50 PM)
             if hora_actual == "16:40" and not enviado_tarde:
                 mensaje = (
                     "⚠️ *¡ATENCIÓN SEÑORES!* ⚠️\n"
@@ -77,17 +89,16 @@ def loop_automatico():
                 enviado_tarde = True
                 
         except Exception as e:
-            print(f"Error en el loop de avisos: {e}")
+            # Captura cualquier error catastrófico en el bucle para que el bot NUNCA muera
+            print(f"Error crítico atrapado en el loop principal: {e}")
             
-        time.sleep(30) # Revisa el reloj cada 30 segundos
+        time.sleep(30)
 
 if __name__ == '__main__':
-    # Iniciar el hilo en segundo plano para las tareas automatizadas y avisos
     hilo_automatizacion = threading.Thread(target=loop_automatico)
     hilo_automatizacion.daemon = True
     hilo_automatizacion.start()
     
-    # Iniciar el servidor Flask requerido por Render usando el puerto dinámico
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-                    
+                
