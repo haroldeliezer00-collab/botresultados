@@ -23,6 +23,50 @@ primera_ejecucion = True
 def limpiar_texto(texto):
     return " ".join(texto.split())
 
+def enviar_saludo_matutino():
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        mensaje = (
+            "🎯 *AGENCIA HAROLD JOSE* 🎯\n\n"
+            "🌅 *¡Buenos días a todos!* 🌅\n\n"
+            "Ya arrancamos un nuevo día con la mejor energía. "
+            "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+            "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
+        )
+        payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown"}
+        requests.post(url, json=payload)
+        print("☀️ Saludo matutino enviado con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al enviar el saludo matutino: {e}")
+
+def enviar_tasa_dolar():
+    try:
+        # Consulta a la API pública de referencia cambiaria oficial (BCV)
+        api_url = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar/bcv"
+        response = requests.get(api_url, timeout=10)
+        
+        precio_dolar = "No disponible"
+        fecha_actualizacion = ""
+        
+        if response.status_code == 200:
+            data = response.json()
+            precio_dolar = data.get('price', 'N/A')
+            fecha_actualizacion = data.get('last_update', '')
+
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        mensaje = (
+            "💵 *TASA OFICIAL BCV* 💵\n\n"
+            f"🏦 *Moneda:* Dólar Estadounidense\n"
+            f"📈 *Precio Oficial:* Bs. *{precio_dolar}*\n"
+            f"📅 *Actualización:* {fecha_actualizacion}\n\n"
+            "🔗 Fuente: [PyDolarVenezuela](https://pydolarvenezuela.com)"
+        )
+        payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown", "disable_web_page_preview": True}
+        requests.post(url, json=payload)
+        print("💵 Tasa del dólar enviada con éxito.")
+    except Exception as e:
+        print(f"⚠️ Error al obtener o enviar la tasa del dólar: {e}")
+
 def verificar_resultados():
     global primera_ejecucion
     try:
@@ -34,7 +78,6 @@ def verificar_resultados():
             return
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
-        
         tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
         
         nuevos_encontrados = []
@@ -116,7 +159,13 @@ def verificar_resultados():
 
 def loop_bot():
     verificar_resultados()
+    # Programar saludo matutino a las 7:00 AM
+    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
+    # Programar la tasa oficial del dólar BCV a la 1:00 PM (13:00)
+    schedule.every().day.at("13:00").do(enviar_tasa_dolar)
+    # Revisar los resultados de la lotería cada 2 minutos
     schedule.every(2).minutes.do(verificar_resultados)
+    
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -128,4 +177,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-            
+        
