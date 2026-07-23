@@ -20,8 +20,52 @@ def home():
 resultados_enviados = set()
 primera_ejecucion = True
 
+# Diccionario de emojis para los animalitos
+ANIMAL_EMOJIS = {
+    'CARNERO': '🐏',
+    'TORO': '🐂',
+    'CIEMPIES': '🐛',
+    'ALACRAN': '🦂',
+    'LEON': '🦁',
+    'RANA': '🐸',
+    'PERICO': '🦜',
+    'CHIVO': '🐐',
+    'COCHINO': '🐖',
+    'GALLO': '🐓',
+    'CARACOL': '🐌',
+    'CULEBRA': '🐍',
+    'ZAMURO': '🐦‍⬛',
+    'GATO': '🐈',
+    'BALLENA': '🐋',
+    'CAIMAN': '🐊',
+    'AGUILA': '🦅',
+    'TIGRE': '🐅',
+    'PAVITO': '🦃',
+    'BURRO': '🫏',
+    'MONO': '🐒',
+    'IGUANA': '🦎',
+    'BUFALO': '🐃',
+    'GALLINA': '🐔',
+    'VACA': '🐄',
+    'PERRO': '🐕',
+    'ZORRO': '🦊',
+    'OSO': '🐻',
+    'PESCADO': '🐟',
+    'ZEBRA': '🦓',
+    'CIERVO': '🦌',
+    'CAMELOS': '🐫',
+    'BALLENA': '🐳'
+}
+
 def limpiar_texto(texto):
     return " ".join(texto.split())
+
+def obtener_emoji(resultado_texto):
+    partes = resultado_texto.split('-')
+    if len(partes) > 1:
+        nombre_animal = partes[1].strip().upper()
+        return ANIMAL_EMOJIS.get(nombre_animal, '')
+    return ''
 
 def enviar_saludo_matutino():
     try:
@@ -125,7 +169,7 @@ def verificar_resultados():
                         break
             
             if not nombre_loteria or len(nombre_loteria) > 40:
-                        continue
+                continue
             
             nombre_loteria = limpiar_texto(nombre_loteria)
 
@@ -167,10 +211,13 @@ def verificar_resultados():
             return
 
         for item_nuevo in nuevos_encontrados:
+            emoji = obtener_emoji(item_nuevo['resultado'])
+            emoji_str = f" {emoji}" if emoji else ""
+            
             mensaje = (
                 "🎯 AG HAROLD JOSE 🎯\n\n"
                 f"🎰 *{item_nuevo['loteria']}*\n"
-                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
+                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}{emoji_str}"
             )
             
             url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -184,20 +231,11 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
     
-    # Horarios programados (ajustados a UTC para que coincidan con la hora de Venezuela):
-    # - 7:00 AM Venezuela -> 11:00 UTC
+    # Horarios programados ajustados a la hora de Venezuela (UTC):
     schedule.every().day.at("11:00").do(enviar_saludo_matutino)
-    
-    # - 9:30 AM Venezuela -> 13:30 UTC
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
-    
-    # - 1:00 PM Venezuela (Tasa BCV) -> 17:00 UTC
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
-    
-    # - 1:30 PM Venezuela -> 17:30 UTC
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
-    
-    # - 5:30 PM Venezuela -> 21:30 UTC
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
     
     # Revisar los resultados de la lotería cada 2 minutos
@@ -214,4 +252,3 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-        
