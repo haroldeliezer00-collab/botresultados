@@ -36,6 +36,7 @@ def home():
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
         "👉 <a href='/test/polla'>Probar Súper Polla Tarde (2:00 PM)</a><br>"
         "👉 <a href='/test/pozo'>Probar Pozo Millonario (2:00 PM)</a><br>"
+        "👉 <a href='/test/recordatorio'>Probar Recordatorios Bloque 2:00 PM (Súper Polla + Pozo)</a><br>"
         "👉 <a href='/test/micro3pm'>Probar Micro Polla 3:00 PM</a><br>"
         "👉 <a href='/test/grandupleta'>Probar Gran Dupleta 4:00 PM</a><br>"
         "👉 <a href='/test/dupletamillonaria'>Probar Dupleta Millonaria 4:00 PM</a><br>"
@@ -65,6 +66,11 @@ def test_polla():
 def test_pozo():
     enviar_pozo_millonario()
     return "¡Prueba ejecutada! Se envió el Pozo Millonario."
+
+@app.route('/test/recordatorio')
+def test_recordatorio():
+    enviar_lote_recordatorios_2pm()
+    return "¡Prueba ejecutada! Se enviaron los recordatorios de Súper Polla y Pozo Millonario."
 
 @app.route('/test/micro3pm')
 def test_micro3pm():
@@ -106,7 +112,7 @@ resultados_enviados = set()
 primera_ejecucion = True
 
 ANIMAL_EMOJIS = {
-    'CARNERO': '🐏', 'TORO': '🐂', 'CIEMPIES': '🐛', 'ALACRAN': '🦂',
+    'CARNERO': '🐏', 'TORO': '🐂', 'CIEMPIES': '🐛', 'ALACRAN': 'ÑA',
     'LEON': '🦁', 'RANA': '🐸', 'PERICO': '🦜', 'CHIVO': '🐐',
     'COCHINO': '🐖', 'GALLO': '🐓', 'CARACOL': '🐌', 'CULEBRA': '🐍',
     'ZAMURO': '🐦‍⬛', 'GATO': '🐈', 'BALLENA': '🐋', 'CAIMAN': '🐊',
@@ -382,9 +388,19 @@ def enviar_recordatorio_generico(nombre_polla, url_progreso, url_enlace_jugada, 
     except Exception as e:
         print(f"⚠️ Error al enviar recordatorio: {e}")
 
+# RECORDATORIOS DE LAS 2:40 PM
 def enviar_recordatorio_super_polla():
     enviar_recordatorio_generico("SÚPER POLLA MILLONARIA (TURNO TARDE)", URL_POLLA_TARDE, "https://wa.link/uhefij", "2:50 PM")
 
+def enviar_recordatorio_pozo_millonario():
+    enviar_recordatorio_generico("POZO MILLONARIO (3:00 PM - 7:00 PM)", "https://tr.ee/pozo-millonario-tarde", "https://wa.link/uhefij", "2:50 PM")
+
+def enviar_lote_recordatorios_2pm():
+    enviar_recordatorio_super_polla()
+    time.sleep(3)
+    enviar_recordatorio_pozo_millonario()
+
+# RECORDATORIOS RESTANTES
 def enviar_recordatorio_micro_3pm():
     enviar_recordatorio_generico("MICRO POLLA (4PM-7PM)", "https://pozomillonarioplus.com/pozos/micro-polla", "https://wa.link/uhefij", "3:50 PM")
 
@@ -433,110 +449,4 @@ def verificar_resultados():
                         break
             
             if not nombre_loteria:
-                lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
-                for linea in lineas:
-                    if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
-                        nombre_loteria = linea
-                        break
-            
-            if not nombre_loteria or len(nombre_loteria) > 40:
-                continue
-            
-            nombre_loteria = limpiar_texto(nombre_loteria)
-
-            slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
-            if not slots_sorteo:
-                slots_sorteo = [tarjeta]
-
-            for slot in slots_sorteo:
-                texto_slot = slot.get_text(" ", strip=True).upper()
-                if "PENDIENTE" in texto_slot:
-                    continue
-                
-                match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
-                if not match_h:
-                    continue
-                hora = match_h.group(1).upper()
-
-                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
-                if not match_res:
-                    continue
-                
-                resultado_final = limpiar_texto(match_res.group(1)).upper()
-                clave = (nombre_loteria, hora, resultado_final)
-
-                if primera_ejecucion:
-                    resultados_enviados.add(clave)
-                else:
-                    if clave not in resultados_enviados:
-                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                        if item_dict not in nuevos_encontrados:
-                            nuevos_encontrados.append(item_dict)
-                            resultados_enviados.add(clave)
-
-        if primera_ejecucion:
-            primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total registros base: {len(resultados_enviados)}")
-            return
-
-        for item_nuevo in nuevos_encontrados:
-            emoji = obtener_emoji(item_nuevo['resultado'])
-            emoji_str = f" {emoji}" if emoji else ""
-            
-            mensaje = (
-                "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 *{item_nuevo['loteria']}*\n"
-                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}{emoji_str}"
-            )
-            
-            url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-            payload = {"chat_id": CANAL_ID, "text": mensaje, "parse_mode": "Markdown"}
-            requests.post(url, json=payload)
-            time.sleep(1)
-
-    except Exception as e:
-        print(f"⚠️ Error general: {e}")
-
-# --- CRONOGRAMA AUTOMÁTICO ---
-def loop_bot():
-    verificar_resultados()
-    
-    # Horarios programados diarios (Hora de Venezuela)
-    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("11:00").do(enviar_saludo_matutino)
-    schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
-    
-    # Bloque 2:00 PM (Sellar 2:00 - 2:50)
-    schedule.every().day.at("14:00").do(enviar_lote_pollas_2pm)
-    schedule.every().day.at("14:40").do(enviar_recordatorio_super_polla)
-    
-    # Bloque 3:00 PM (Sellar 3:00 - 3:50)
-    schedule.every().day.at("15:00").do(enviar_micro_polla_3pm)
-    schedule.every().day.at("15:40").do(enviar_recordatorio_micro_3pm)
-    
-    # Bloque 4:00 PM (Sellar 4:00 - 4:50) -> Gran Dupleta, Dupleta Millonaria, Mini Polla
-    schedule.every().day.at("16:00").do(enviar_lote_pollas_4pm)
-    schedule.every().day.at("16:40").do(enviar_lote_recordatorios_4pm)
-    
-    # Bloque 5:00 PM (Sellar 5:00 - 5:50)
-    schedule.every().day.at("17:00").do(enviar_micro_polla_6pm)
-    schedule.every().day.at("17:00").do(enviar_tasa_dolar)
-    schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
-    schedule.every().day.at("17:40").do(enviar_recordatorio_micro_6pm)
-    
-    schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
-    
-    # Revisión continua de resultados de lotería
-    schedule.every(2).minutes.do(verificar_resultados)
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-if __name__ == '__main__':
-    t = Thread(target=loop_bot)
-    t.daemon = True
-    t.start()
-    
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+                lineas = [l.strip(
