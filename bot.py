@@ -236,7 +236,8 @@ def verificar_resultados():
                 f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
             )
             enviar_telegram(mensaje, disable_web_preview=True)
-            time.sleep(1)
+            # Pausa de 3 segundos entre cada mensaje para espaciarlos de forma natural
+            time.sleep(3)
 
     except Exception as e:
         print(f"⚠️ Error general en resultados: {e}")
@@ -255,7 +256,8 @@ def loop_bot():
     # Mensaje de cierre de jornada a las 21:10 (9:10 PM)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
 
-    schedule.every(2).minutes.do(verificar_resultados)
+    # Revisión cada 1 minuto
+    schedule.every(1).minute.do(verificar_resultados)
 
     while True:
         schedule.run_pending()
