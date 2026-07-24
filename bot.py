@@ -68,6 +68,7 @@ def test_cierre():
 # -----------------------------
 
 resultados_enviados = set()
+primera_ejecucion = True
 
 def limpiar_texto(texto):
     return " ".join(texto.split())
@@ -89,17 +90,18 @@ def enviar_telegram(mensaje, disable_web_preview=True):
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
 def limpiar_memoria_diaria():
-    global resultados_enviados
+    global resultados_enviados, primera_ejecucion
     resultados_enviados.clear()
+    primera_ejecucion = True
     print("🧹 Memoria de resultados limpiada para arrancar el nuevo día.")
 
 def enviar_saludo_matutino():
     mensaje = (
-        "🎯 *AGENCIA HAROLD JOSE* 🎯\n\n"
-        "🌅 *¡Buenos días a todos!* 🌅\n\n"
+        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
+        "🌅 ¡Buenos días a todos! 🌅\n\n"
         "Ya arrancamos un nuevo día con la mejor energía. "
         "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
-        "📢 *Nuestros canales oficiales:*\n"
+        "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
         "📸 Instagram: https://www.instagram.com/agharold\\_jose (@agharold\\_jose)\n"
         "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
@@ -122,10 +124,10 @@ def enviar_tasa_dolar():
                     precio_dolar = strong_elem.get_text(strip=True)
 
         mensaje = (
-            "💵 *TASA OFICIAL BCV* 💵\n\n"
-            f"🏦 *Moneda:* Dólar Estadounidense\n"
-            f"📈 *Precio Oficial:* Bs. *{precio_dolar}*\n\n"
-            "🔗 Fuente: [Banco Central de Venezuela](https://www.bcv.org.ve/)"
+            "💵 TASA OFICIAL BCV 💵\n\n"
+            f"🏦 Moneda: Dólar Estadounidense\n"
+            f"📈 Precio Oficial: Bs. {precio_dolar}\n\n"
+            "🔗 Fuente: Banco Central de Venezuela"
         )
         enviar_telegram(mensaje, disable_web_preview=True)
         print("💵 Tasa BCV enviada.")
@@ -134,12 +136,12 @@ def enviar_tasa_dolar():
 
 def enviar_aviso_taquilla():
     mensaje_promo = (
-        "🎯 *AGENCIA HAROLD JOSE* 🎯\n"
+        "🎯 AGENCIA HAROLD JOSE 🎯\n"
         "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
-        "📢 *¡AVISO IMPORTANTE PARA NUESTROS JUGADORES!* 📢\n\n"
-        "Recuerda que para jugar con nosotros debes acceder primero a nuestro *Canal de WhatsApp* para verificar si la taquilla se encuentra activa el día de hoy:\n"
+        "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
+        "Recuerda que para jugar con nosotros debes acceder primero al Canal de WhatsApp para verificar si la taquilla se encuentra activa el día de hoy:\n"
         "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
-        "📲 *Si la taquilla está activa*, puedes revisar nuestro catálogo y escribirnos directamente:\n"
+        "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
         "💬 También estamos disponibles por Telegram:\n"
         "👉 t.me/ag\\_haroldjose\n\n"
@@ -150,15 +152,15 @@ def enviar_aviso_taquilla():
 
 def enviar_mensaje_cierre():
     mensaje = (
-        "🎯 *AGENCIA HAROLD JOSE* 🎯\n\n"
-        "🌙 *¡FINAL DE JORNADA!* 🌙\n\n"
+        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
+        "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
         "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
     print("🌙 Mensaje de cierre de jornada enviado.")
 
 def verificar_resultados():
-    global resultados_enviados
+    global resultados_enviados, primera_ejecucion
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
@@ -167,7 +169,7 @@ def verificar_resultados():
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
         tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
-        
+
         nuevos_encontrados = []
 
         for tarjeta in tarjetas:
@@ -179,17 +181,17 @@ def verificar_resultados():
                     if t_text not in ["WINBIG", "RESULTADOS"]:
                         nombre_loteria = t_text
                         break
-            
+
             if not nombre_loteria:
                 lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
                 for linea in lineas:
                     if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
                         nombre_loteria = linea
                         break
-            
+
             if not nombre_loteria or len(nombre_loteria) > 40:
                 continue
-            
+
             nombre_loteria = limpiar_texto(nombre_loteria)
 
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
@@ -200,29 +202,37 @@ def verificar_resultados():
                 texto_slot = slot.get_text(" ", strip=True).upper()
                 if "PENDIENTE" in texto_slot:
                     continue
-                
+
                 match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
                 if not match_h:
                     continue
                 hora = match_h.group(1).upper()
 
-                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
                 if not match_res:
                     continue
-                
+
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
                 clave = (nombre_loteria, hora, resultado_final)
 
-                if clave not in resultados_enviados:
-                    item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                    if item_dict not in nuevos_encontrados:
-                        nuevos_encontrados.append(item_dict)
-                        resultados_enviados.add(clave)
+                if primera_ejecucion:
+                    resultados_enviados.add(clave)
+                else:
+                    if clave not in resultados_enviados:
+                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                        if item_dict not in nuevos_encontrados:
+                            nuevos_encontrados.append(item_dict)
+                            resultados_enviados.add(clave)
+
+        if primera_ejecucion:
+            primera_ejecucion = False
+            print(f"🚀 Sincronización inicial lista en canal único. Total registros base: {len(resultados_enviados)}")
+            return
 
         for item_nuevo in nuevos_encontrados:
             mensaje = (
                 "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 *{item_nuevo['loteria']}*\n"
+                f"🎰 {item_nuevo['loteria']}\n"
                 f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
             )
             enviar_telegram(mensaje, disable_web_preview=True)
@@ -233,7 +243,7 @@ def verificar_resultados():
 
 def loop_bot():
     verificar_resultados()
-    
+
     # Horarios programados diarios (Hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("07:00").do(enviar_saludo_matutino)
@@ -241,12 +251,12 @@ def loop_bot():
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
-    
+
     # Mensaje de cierre de jornada a las 21:10 (9:10 PM)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-    
+
     schedule.every(2).minutes.do(verificar_resultados)
-    
+
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -255,6 +265,6 @@ if __name__ == '__main__':
     t = Thread(target=loop_bot)
     t.daemon = True
     t.start()
-    
+
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
