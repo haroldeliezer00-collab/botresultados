@@ -36,7 +36,8 @@ def home():
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
         "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
-        "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a>"
+        "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a><br>"
+        "👉 <a href='/test/cierre'>Probar Mensaje de Cierre (Noche)</a>"
     )
 
 # --- RUTAS DE PRUEBA MANUAL ---
@@ -59,6 +60,11 @@ def test_bcv():
 def test_resultados():
     verificar_resultados()
     return "¡Prueba ejecutada! Se forzó la revisión de los resultados."
+
+@app.route('/test/cierre')
+def test_cierre():
+    enviar_mensaje_cierre()
+    return "¡Prueba ejecutada! Se envió el mensaje de cierre al canal."
 # -----------------------------
 
 resultados_enviados = set()
@@ -143,6 +149,15 @@ def enviar_aviso_taquilla():
     )
     enviar_telegram(mensaje_promo, disable_web_preview=True)
     print("📢 Aviso de taquilla enviado.")
+
+def enviar_mensaje_cierre():
+    mensaje = (
+        "🎯 *AGENCIA HAROLD JOSE* 🎯\n\n"
+        "🌙 *¡FINAL DE JORNADA!* 🌙\n\n"
+        "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
+    )
+    enviar_telegram(mensaje, disable_web_preview=True)
+    print("🌙 Mensaje de cierre de jornada enviado.")
 
 def verificar_resultados():
     global primera_ejecucion
@@ -237,6 +252,9 @@ def loop_bot():
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("21:30").do(enviar_aviso_taquilla)
     
+    # Mensaje de cierre de jornada a las 21:10 (9:10 PM)
+    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
+    
     schedule.every(2).minutes.do(verificar_resultados)
     
     while True:
@@ -250,3 +268,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    
