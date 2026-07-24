@@ -246,7 +246,7 @@ def loop_bot():
     
     # Horarios programados diarios (Hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("11:00").do(enviar_saludo_matutino)
+    schedule.every().day.at("07:00").do(enviar_saludo_matutino) # Modificado a las 7:00 AM
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
@@ -268,4 +268,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    
+        
