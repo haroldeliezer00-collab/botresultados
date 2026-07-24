@@ -68,7 +68,6 @@ def test_cierre():
 # -----------------------------
 
 resultados_enviados = set()
-primera_ejecucion = True
 
 def limpiar_texto(texto):
     return " ".join(texto.split())
@@ -90,9 +89,8 @@ def enviar_telegram(mensaje, disable_web_preview=True):
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
 def limpiar_memoria_diaria():
-    global resultados_enviados, primera_ejecucion
+    global resultados_enviados
     resultados_enviados.clear()
-    primera_ejecucion = True
     print("🧹 Memoria de resultados limpiada para arrancar el nuevo día.")
 
 def enviar_saludo_matutino():
@@ -160,7 +158,7 @@ def enviar_mensaje_cierre():
     print("🌙 Mensaje de cierre de jornada enviado.")
 
 def verificar_resultados():
-    global primera_ejecucion
+    global resultados_enviados
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
@@ -215,19 +213,11 @@ def verificar_resultados():
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
                 clave = (nombre_loteria, hora, resultado_final)
 
-                if primera_ejecucion:
-                    resultados_enviados.add(clave)
-                else:
-                    if clave not in resultados_enviados:
-                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                        if item_dict not in nuevos_encontrados:
-                            nuevos_encontrados.append(item_dict)
-                            resultados_enviados.add(clave)
-
-        if primera_ejecucion:
-            primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista en canal único. Total registros base: {len(resultados_enviados)}")
-            return
+                if clave not in resultados_enviados:
+                    item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                    if item_dict not in nuevos_encontrados:
+                        nuevos_encontrados.append(item_dict)
+                        resultados_enviados.add(clave)
 
         for item_nuevo in nuevos_encontrados:
             mensaje = (
@@ -246,7 +236,7 @@ def loop_bot():
     
     # Horarios programados diarios (Hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino) # Modificado a las 7:00 AM
+    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
     schedule.every().day.at("13:30").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_tasa_dolar)
     schedule.every().day.at("17:30").do(enviar_aviso_taquilla)
@@ -268,4 +258,3 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-        
