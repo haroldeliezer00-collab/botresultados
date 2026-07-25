@@ -59,7 +59,7 @@ def test_bcv():
 @app.route('/test/resultados')
 def test_resultados():
     verificar_resultados()
-    return "¡Prueba ejecutada! Se forzó la revisión de los resultados."
+    return "¡Prueba ejecutada! Se forzó la revisión dos resultados."
 
 @app.route('/test/cierre')
 def test_cierre():
@@ -236,7 +236,6 @@ def verificar_resultados():
                 f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
             )
             enviar_telegram(mensaje, disable_web_preview=True)
-            # Pausa de 3 segundos entre cada mensaje para espaciarlos de forma natural
             time.sleep(3)
 
     except Exception as e:
@@ -256,14 +255,13 @@ def loop_bot():
     # Mensaje de cierre de jornada a las 21:10 (9:10 PM)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
 
-    # Revisión cada 1 minuto
     schedule.every(1).minute.do(verificar_resultados)
 
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     t = Thread(target=loop_bot)
     t.daemon = True
     t.start()
