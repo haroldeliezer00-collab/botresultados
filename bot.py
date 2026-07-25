@@ -103,7 +103,7 @@ def enviar_saludo_matutino():
         "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-        "📸 Instagram: https://www.instagram.com/agharold\\_jose (@agharold\\_jose)\n"
+        "📸 Instagram: https://www.instagram.com/agharold\\.jose (@agharold\\.jose)\n"
         "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
         "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
     )
@@ -263,7 +263,7 @@ def loop_bot():
         schedule.run_pending()
         time.sleep(1)
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     t = Thread(target=loop_bot)
     t.daemon = True
     t.start()
