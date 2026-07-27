@@ -22,7 +22,7 @@ import telebot
 # Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Credenciales y canal principal actualizados
+# Credenciales y canal (recuerda cambiar CANAL al oficial cuando termines las pruebas)
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL = '@pruebajsj'
 ENLACE_FIRMA_CANAL = 'https://t.me/pruebajsj'
@@ -32,7 +32,6 @@ bot = telebot.TeleBot(TOKEN)
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
 
-# Enlaces oficiales adicionales para respaldo/verificación
 ENLACES_OFICIALES = {
     "LOTTO ACTIVO": "https://www.lottoactivo.com/resultados/lotto_activo/",
     "GUACHARO ACTIVO": "https://www.guacharoactivo.com.ve/resultados",
@@ -48,7 +47,6 @@ ENLACES_OFICIALES = {
     "TRIPLE GUACA37": "https://www.guacaactiva.com/"
 }
 
-# Variables de estado diario para la Taquilla
 taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
@@ -70,8 +68,8 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    estado_texto = "ACTIVA" if taquilla_activa_hoy else "INACTIVA"
-    color_estado = "green" if taquilla_activa_hoy else "red"
+    estado_texto = "ACTIVA" if taquilla_activa_hoy else "INACTIVA (Esperando señal manual)"
+    color_estado = "green" if taquilla_activa_hoy else "orange"
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
         f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
@@ -86,7 +84,6 @@ def home():
         "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla (Tarde)</a>"
     )
 
-# --- RUTAS DE PRUEBA MANUAL (TEST) ---
 @app.route('/test/madrugada')
 def test_madrugada():
     enviar_saludo_madrugada()
@@ -126,7 +123,6 @@ def test_cierre():
 def test_refuerzo():
     tarea_refuerzo_tarde()
     return "Prueba de refuerzo ejecutada manualmente."
-# ------------------------------------
 
 resultados_enviados = set()
 primera_ejecucion = True
@@ -135,7 +131,6 @@ def limpiar_texto(texto):
     return " ".join(texto.split())
 
 def enviar_telegram(mensaje, disable_web_preview=True):
-    """Función centralizada para enviar mensajes al canal oficial."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CANAL, 
@@ -159,7 +154,7 @@ def limpiar_memoria_diaria():
     ultimo_id_foto_canal = None
     print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
 
-# --- DETECTOR AUTOMÁTICO DE TAQUILLA ACTIVA DESDE EL CANAL ---
+# --- DETECTOR AUTOMÁTICO DE TAQUILLA ACTIVA DESDE EL CANAL (FUNCIONA CUALQUIER DÍA SI HAY SEÑAL MANUAL) ---
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
     if not imagen_activa_id:
@@ -198,9 +193,9 @@ def capturar_texto_canal(message):
 
 def tarea_refuerzo_tarde():
     global taquilla_activa_hoy, imagen_activa_id
-    
+    # Se ejecuta automáticamente a las 3:30 p.m. SÓLO si previamente diste la señal de apertura hoy
     if taquilla_activa_hoy and imagen_activa_id:
-        print("Ejecutando refuerzo de taquilla de las 3:30 p.m.")
+        print("Ejecutando refuerzo automático de taquilla de las 3:30 p.m.")
         try:
             bot.send_photo(
                 chat_id=CANAL,
@@ -212,8 +207,8 @@ def tarea_refuerzo_tarde():
         except Exception as e:
             print(f"Error al enviar refuerzo de tarde: {e}")
     else:
-        print("A las 3:30 p.m. la taquilla no había sido abierta hoy, se omite el refuerzo.")
-# -------------------------------------------------------------
+        print("A las 3:30 p.m. la taquilla no ha sido activada hoy, se omite el refuerzo automático.")
+# ------------------------------------------------------------------------------------------------------
 
 def enviar_saludo_madrugada():
     mensaje = (
@@ -247,7 +242,6 @@ def generar_piramide():
     seed_val = int(ahora.strftime("%Y%m%d"))
     rnd = random.Random(seed_val)
     
-    # Extracción que diferencia estrictamente entre "00", "0" y del "01" al "36"
     candidates = []
     for f in filas:
         if len(f) >= 2:
@@ -324,7 +318,6 @@ def enviar_tasa_dolar():
                 if strong_elem:
                     raw_precio = strong_elem.get_text(strip=True)
                     try:
-                        # Limpiar formato de la página y redondear a 2 decimales para eliminar ceros y mostrar limpio
                         val_limpio = float(raw_precio.replace('.', '').replace(',', '.'))
                         precio_dolar = f"{val_limpio:.2f}".replace('.', ',')
                     except Exception:
@@ -385,11 +378,8 @@ def verificar_resultados():
     global resultados_enviados, primera_ejecucion
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
-        
-        # Intentar conectar a la página principal de Winbig
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15, verify=False)
         
-        # Si falla Winbig, recorrer automáticamente las páginas oficiales de respaldo
         if respuesta.status_code != 200:
             print(f"⚠️ Winbig no disponible (Status {respuesta.status_code}). Buscando en fuentes oficiales de respaldo...")
             for nombre_ofi, url_ofi in ENLACES_OFICIALES.items():
@@ -429,7 +419,6 @@ def verificar_resultados():
 
             nombre_loteria = limpiar_texto(nombre_loteria)
 
-            # EXCLUIR RULETA ROYAL
             if "RULETA ROYAL" in nombre_loteria:
                 continue
 
@@ -594,7 +583,10 @@ if __name__ == '__main__':
     t_schedule.daemon = True
     t_schedule.start()
 
-    t_bot = Thread(target=lambda: bot.infinity_polling(skip_pending=True))
+    t_bot = Thread(target=lambda: bot.infinity_polling(
+        skip_pending=True, 
+        allowed_updates=['message', 'edited_message', 'channel_post', 'edited_channel_post']
+    ))
     t_bot.daemon = True
     t_bot.start()
 
