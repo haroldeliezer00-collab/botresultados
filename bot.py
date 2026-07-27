@@ -245,9 +245,9 @@ def tarea_refuerzo_tarde():
 
 def enviar_saludo_madrugada():
     mensaje = (
-        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n"
-        "🌅 ¡Despertando con la mejor energía y listos para ganar! 🌅\n\n"
-        "Comenzamos este nuevo día activos, enfocados y con los mejores datos para asegurar cada jugada. ¡Que la suerte esté de nuestro lado desde temprano! 🍀🔥"
+        "AGENCIA HAROLD JOSE - SALUDO DE MADRUGADA\n\n"
+        "¡Despertando con la mejor energía y listos para ganar!\n\n"
+        "Comenzamos este nuevo día activos, enfocados y con los mejores datos para asegurar cada jugada. ¡Que la suerte esté de nuestro lado desde temprano!"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
     print("🌅 Saludo de madrugada enviado.")
@@ -320,19 +320,19 @@ def generar_piramide():
     d1 = f"{seis_numeros[0]}-{seis_numeros[1]}-{seis_numeros[2]}"
     d2 = f"{seis_numeros[3]}-{seis_numeros[4]}-{seis_numeros[5]}"
     
-    mensaje = f"""🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯
-📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢
+    mensaje = f"""CENTRO DE APUESTAS HAROLD JOSE
+REPORTE TACTICO - LA PIRAMIDE
 
-📅 Fecha: {fecha_str}
-Análisis matemático actualizado y listo para la jugada. ¡A asegurar posición:
+Fecha: {fecha_str}
+Analisis matematico actualizado y listo para la jugada.
 
 {cuerpo_piramide}
 
-🔥 DATOS CLAVES PARA HOY:
-📌 {d1}
-📌 {d2}
+DATOS CLAVES PARA HOY:
+- {d1}
+- {d2}
 
-⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza y gana con nosotros! 🍀 💰"""
+¡Juega con confianza y gana con nosotros!"""
     return mensaje
 
 def enviar_piramide_diaria():
@@ -356,10 +356,10 @@ def enviar_tasa_dolar():
                     precio_dolar = f"{float(val_limpio):.2f}".replace('.', ',')
 
         mensaje = (
-            "💵 TASA OFICIAL BCV 💵\n\n"
-            "🏦 Moneda: Dólar Estadounidense\n"
-            f"📈 Precio Oficial: Bs. {precio_dolar}\n\n"
-            "🔗 Fuente: Banco Central de Venezuela"
+            "TASA OFICIAL BCV\n\n"
+            "Moneda: Dolar Estadounidense\n"
+            f"Precio Oficial: Bs. {precio_dolar}\n\n"
+            "Fuente: Banco Central de Venezuela"
         )
         enviar_telegram(mensaje, disable_web_preview=True)
         print("💵 Tasa BCV enviada.")
@@ -368,40 +368,40 @@ def enviar_tasa_dolar():
 
 def enviar_saludo_matutino():
     mensaje = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-        "🌅 ¡Buenos días a todos! 🌅\n\n"
+        "AGENCIA HAROLD JOSE\n\n"
+        "¡Buenos días a todos!\n\n"
         "Ya arrancamos un nuevo día con la mejor energía. "
-        "Por hieres estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
-        "📢 Nuestros canales oficiales:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-        "📸 Instagram: https://www.instagram.com/agharold_jose (@agharold_jose)\n"
-        "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
-        "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
+        "Estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+        "Nuestros canales oficiales:\n"
+        "Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
+        "Instagram: https://www.instagram.com/agharold_jose\n"
+        "Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "¡Mucha suerte en sus jugadas el día de hoy y a ganar!"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
     print("☀️ Saludo matutino enviado.")
 
 def enviar_aviso_taquilla():
     mensaje_promo = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n"
+        "AGENCIA HAROLD JOSE\n"
         "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
-        "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
+        "AVISO IMPORTANTE PARA NUESTROS JUGADORES\n\n"
         "Recuerda que para jugar con nosotros debes acceder primero al Canal de WhatsApp para verificar si la taquilla se encuentra activa el día de hoy:\n"
-        "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
-        "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
-        "💬 También estamos disponibles por Telegram:\n"
-        "👉 t.me/pruebajsj\n\n"
-        "¡Mucha suerte en sus jugadas! 🍀🔥"
+        "https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
+        "Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
+        "También estamos disponibles por Telegram:\n"
+        "t.me/pruebajsj\n\n"
+        "¡Mucha suerte en sus jugadas!"
     )
     enviar_telegram(mensaje_promo, disable_web_preview=True)
     print("📢 Aviso de taquilla enviado.")
 
 def enviar_mensaje_cierre():
     mensaje = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-        "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
-        "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
+        "AGENCIA HAROLD JOSE\n\n"
+        "FINAL DE JORNADA\n\n"
+        "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía."
     )
     enviar_telegram(mensaje, disable_web_preview=True)
     print("🌙 Mensaje de cierre de jornada enviado.")
@@ -508,4 +508,9 @@ def verificar_resultados():
                                 resultados_enviados.add(clave)
 
         if nuevos_encontrados and not primera_ejecucion:
-            mensaje_lote = "?
+            mensaje_lote = "AGENCIA HAROLD JOSE - RESULTADOS\n\n"
+            for item in nuevos_encontrados:
+                tipo = item.get('tipo')
+                loteria = item.get('loteria')
+                hora = item.get('hora')
+                if tipo 
