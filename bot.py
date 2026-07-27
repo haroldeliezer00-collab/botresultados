@@ -352,11 +352,8 @@ def enviar_tasa_dolar():
                 strong_elem = dolar_div.find('strong')
                 if strong_elem:
                     raw_precio = strong_elem.get_text(strip=True)
-                    try:
-                        val_limpio = float(raw_precio.replace('.', '').replace(',', '.'))
-                        precio_dolar = f"{val_limpio:.2f}".replace('.', ',')
-                    except Exception:
-                        precio_dolar = raw_precio
+                    val_limpio = raw_precio.replace('.', '').replace(',', '.')
+                    precio_dolar = f"{float(val_limpio):.2f}".replace('.', ',')
 
         mensaje = (
             "💵 TASA OFICIAL BCV 💵\n\n"
@@ -508,4 +505,7 @@ def verificar_resultados():
                             }
                             if item_dict not in nuevos_encontrados:
                                 nuevos_encontrados.append(item_dict)
-                             
+                                resultados_enviados.add(clave)
+
+        if nuevos_encontrados and not primera_ejecucion:
+            mensaje_lote = "?
