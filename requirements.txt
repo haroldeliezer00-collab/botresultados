@@ -1,4 +1,3 @@
-```text
 Flask
 requests
 beautifulsoup4
