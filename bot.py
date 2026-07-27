@@ -40,8 +40,10 @@ ENLACES_OFICIALES = {
     "SELVA PLUS": "https://www.selvaplus.com/resultados",
     "MONJE MILLONARIO": "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
     "LOTTO ACTIVO RD INTERNACIONAL": "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
-    "GUACA ACTIVA": "https://lotery.winbigvzla.com/resultados",
-    "MEGA GUACA": "https://lotery.winbigvzla.com/resultados",
+    "GUACA ACTIVA": "https://www.guacaactiva.com/",
+    "MEGA GUACA": "https://www.guacaactiva.com/",
+    "TRIPLE GUACA": "https://www.guacaactiva.com/",
+    "TRIO ACTIVO": "https://www.lottoactivo.com/resultados/trio_activo/",
     "EL GUACHARITO MILLONARIO": "https://elguacharitomillonario.com/"
 }
 
@@ -391,6 +393,10 @@ def verificar_resultados():
                 continue
 
             nombre_loteria = limpiar_texto(nombre_loteria)
+
+            # Omitir explícitamente RULETA ROYAL si aparece en el scraping
+            if "RULETA ROYAL" in nombre_loteria:
+                continue
 
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
             if not slots_sorteo:
