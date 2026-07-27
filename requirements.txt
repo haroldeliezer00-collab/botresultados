@@ -1,6 +1,8 @@
-pyTelegramBotAPI
+```text
+Flask
 requests
 beautifulsoup4
 schedule
-Flask
-gunicorn
+pyTelegramBotAPI
+urllib3
+```
