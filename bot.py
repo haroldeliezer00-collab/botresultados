@@ -48,32 +48,32 @@ taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
 
-TEXTO_TAQUILLA = (
-    "✅ AG HAROLD JOSÉ ACTIVA ✅\n"
-    "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
-    "📲 Envía tus jugadas:\n"
-    "(Comprobante de pago / Lotería / monto / Hora)\n\n"
-    "📖 Consulta nuestro reglamento aquí:\n"
-    "https://wa.me/p/33319103291071105/584124489363\n"
-    "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
-    "RESULTADOS AUTOMÁTICOS\n"
-    f"{ENLACE_FIRMA_CANAL}\n\n"
-    "¡Mucho éxito en la jornada de hoy! 🍀✨"
-)
+TEXTO_TAQUILLA = f"""✅ AG HAROLD JOSÉ ACTIVA ✅
+Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.
 
-BANNER_AGENCIA = (
-    "╔═══════ ⋆★⋆ ═══════╗\n"
-    "  ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
-    "╚═══════ ⋆★⋆ ═══════╝\n"
-    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n"
-    "      Mas de 6 años brindando\n"
-    "        confianza y seguridad\n"
-    "en cada rincón de Venezuela\n"
-    "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ\n"
-    "«La suerte es una flecha 🏹 lanzada que hace blanco 🎯 en el que menos la espera 🤑»\n"
-    "📲JUEGA AQUI👇👇\n"
-    "WHATSAPP: 04124489363"
-)
+📲 Envía tus jugadas:
+(Comprobante de pago / Lotería / monto / Hora)
+
+📖 Consulta nuestro reglamento aquí:
+https://wa.me/p/33319103291071105/584124489363
+🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363
+
+RESULTADOS AUTOMÁTICOS
+{ENLACE_FIRMA_CANAL}
+
+¡Mucho éxito en la jornada de hoy! 🍀✨"""
+
+BANNER_AGENCIA = """╔═══════ ⋆★⋆ ═══════╗
+  ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★
+╚═══════ ⋆★⋆ ═══════╝
+╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮
+      Mas de 6 años brindando
+        confianza y seguridad
+en cada rincón de Venezuela
+      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄᠢᴀʟᴇꜱ
+«La suerte es una flecha 🏹 lanzada que hace blanco 🎯 en el que menos la espera 🤑»
+📲JUEGA AQUI👇👇
+WHATSAPP: 04124489363"""
 
 app = Flask('')
 
@@ -320,17 +320,19 @@ def generar_piramide():
     d1 = f"{seis_numeros[0]}-{seis_numeros[1]}-{seis_numeros[2]}"
     d2 = f"{seis_numeros[3]}-{seis_numeros[4]}-{seis_numeros[5]}"
     
-    mensaje = (
-        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
-        "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
-        f"📅 Fecha: {fecha_str}\n"
-        "Análisis matemático actualizado y listo para la jugada. ¡A asegurar posición:\n\n"
-        f"{cuerpo_piramide}\n\n"
-        "🔥 DATOS CLAVES PARA HOY:\n"
-        f"📌 {d1}\n"
-        f"📌 {d2}\n\n"
-        "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza y gana con nosotros! 🍀 💰"
-    )
+    mensaje = f"""🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯
+📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢
+
+📅 Fecha: {fecha_str}
+Análisis matemático actualizado y listo para la jugada. ¡A asegurar posición:
+
+{cuerpo_piramide}
+
+🔥 DATOS CLAVES PARA HOY:
+📌 {d1}
+📌 {d2}
+
+⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza y gana con nosotros! 🍀 💰"""
     return mensaje
 
 def enviar_piramide_diaria():
@@ -501,4 +503,9 @@ def verificar_resultados():
                             item_dict = {
                                 'tipo': 'animalito',
                                 'loteria': nombre_loteria,
-                          
+                                'hora': hora,
+                                'resultado': resultado_final
+                            }
+                            if item_dict not in nuevos_encontrados:
+                                nuevos_encontrados.append(item_dict)
+                               
