@@ -66,11 +66,11 @@ RESULTADOS AUTOMÁTICOS
 BANNER_AGENCIA = """╔═══════ ⋆★⋆ ═══════╗
   ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★
 ╚═══════ ⋆★⋆ ═══════╝
-╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮
+╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮
       Mas de 6 años brindando
         confianza y seguridad
 en cada rincón de Venezuela
-      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄᠢᴀʟᴇꜱ
+      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰᛁᴄᠢᴀʟᴇꜱ
 «La suerte es una flecha 🏹 lanzada que hace blanco 🎯 en el que menos la espera 🤑»
 📲JUEGA AQUI👇👇
 WHATSAPP: 04124489363"""
