@@ -469,6 +469,8 @@ def verificar_resultados():
                     num_triple = match_num.group(1)
                     terminal = num_triple[-2:]
                     
+                    loteria_nombre = "TRÍO ACTIVO" if ("TRIO" in nombre_loteria or "TRÍO" in nombre_loteria) else nombre_loteria
+                    
                     clave = (nombre_loteria, hora, num_triple)
                     if primera_ejecucion:
                         resultados_enviados.add(clave)
@@ -476,7 +478,7 @@ def verificar_resultados():
                         if clave not in resultados_enviados:
                             item_dict = {
                                 'tipo': 'triple',
-                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombre_loteria or "TRÍO" in nombre_loteria else nombre_loteria,
+                                'loteria': loteria_nombre,
                                 'hora': hora,
                                 'numero': num_triple,
                                 'terminal': terminal
@@ -499,5 +501,4 @@ def verificar_resultados():
                             item_dict = {
                                 'tipo': 'animalito',
                                 'loteria': nombre_loteria,
-                                'hora': hora,
-                                'resultado': resultado_
+                          
