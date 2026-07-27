@@ -10,12 +10,12 @@ except AttributeError:
 import requests
 from bs4 import BeautifulSoup
 import time
-from datetime import datetime, timedelta
 import schedule
 from threading import Thread
-from flask import Flask
+from flask import Flask, render_template_string
 import re
 import urllib3
+from datetime import datetime
 import random
 import telebot
 
@@ -47,29 +47,6 @@ ENLACES_OFICIALES = {
     "TRIPLE GUACA37": "https://www.guacaactiva.com/"
 }
 
-# --- CONFIGURACIÓN DEL SISTEMA DE POLLAS ---
-POLLAS_LIST = [
-    {
-        "nombre": "POLLA ANIMANIAC",
-        "keyword": "ANIMANIAC",
-        "hora_apertura": "08:00",
-        "hora_cierre": "11:00"
-    },
-    {
-        "nombre": "EL POLLÓN DE ORO",
-        "keyword": "POLLON",
-        "hora_apertura": "09:00",
-        "hora_cierre": "13:00"
-    },
-    {
-        "nombre": "GRAN DUPLETA",
-        "keyword": "DUPLETA",
-        "hora_apertura": "10:00",
-        "hora_cierre": "16:00"
-    }
-]
-
-FLYERS_CACHED = {}
 taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
@@ -87,6 +64,21 @@ TEXTO_TAQUILLA = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
+# BANNER CORPORATIVO PARA TABLAS DE RESULTADOS
+BANNER_AGENCIA = (
+    "╔═══════ ⋆★⋆ ═══════╗\n"
+    "  ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
+    "╚═══════ ⋆★⋆ ═══════╝\n"
+    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n"
+    "      Mas de 6 años brindando\n"
+    "        confianza y seguridad\n"
+    "en cada rincón de Venezuela\n"
+    "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ\n"
+    "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
+    "📲JUEGA AQUI👇👇\n"
+    "WHATSAPP: 04124489363"
+)
+
 app = Flask('')
 
 @app.route('/')
@@ -94,7 +86,7 @@ def home():
     estado_texto = "ACTIVA" if taquilla_activa_hoy else "INACTIVA (Esperando señal manual)"
     color_estado = "green" if taquilla_activa_hoy else "orange"
     return (
-        f"¡El bot unificado AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
+        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
         f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
         "<b>Enlaces de prueba rápida (Test):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
@@ -103,55 +95,64 @@ def home():
         "👉 <a href='/test/saludo'>Probar Saludo Matutino (7:00 AM)</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla (10 AM, 2 PM, 5 PM)</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a><br>"
-        "👉 <a href='/test/pollas'>Forzar Verificación de Pollas</a><br>"
         "👉 <a href='/test/cierre'>Probar Mensaje de Cierre (9:10 PM)</a><br>"
-        "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla (Tarde)</a>"
+        "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla (Tarde)</a><br>"
+        "👉 <a href='/test/tabla'>Probar Formato de Tabla de Resultados</a>"
     )
 
 @app.route('/test/madrugada')
 def test_madrugada():
     enviar_saludo_madrugada()
-    return "¡Prueba ejecutada! Saludo de madrugada enviado."
+    return "¡Prueba ejecutada! Se envió el saludo de madrugada al canal."
 
 @app.route('/test/piramide')
 def test_piramide():
     enviar_piramide_diaria()
-    return "¡Prueba ejecutada! Pirámide numérica enviada."
+    return "¡Prueba ejecutada! Se envió la pirámide numérica al canal."
 
 @app.route('/test/bcv')
 def test_bcv():
     enviar_tasa_dolar()
-    return "¡Prueba ejecutada! Tasa BCV enviada."
+    return "¡Prueba ejecutada! Se envió la tasa del BCV al canal."
 
 @app.route('/test/saludo')
 def test_saludo():
     enviar_saludo_matutino()
-    return "¡Prueba ejecutada! Saludo matutino enviado."
+    return "¡Prueba ejecutada! Se envió el saludo matutino al canal."
 
 @app.route('/test/taquilla')
 def test_taquilla():
     enviar_aviso_taquilla()
-    return "¡Prueba ejecutada! Aviso de taquilla enviado."
+    return "¡Prueba ejecutada! Se envió el aviso de taquilla al canal."
 
 @app.route('/test/resultados')
 def test_resultados():
     verificar_resultados()
-    return "¡Prueba ejecutada! Revisión de resultados forzada."
-
-@app.route('/test/pollas')
-def test_pollas():
-    verificar_y_enviar_pollas()
-    return "¡Prueba ejecutada! Verificación de pollas forzada."
+    return "¡Prueba ejecutada! Se forzó la revisión de resultados."
 
 @app.route('/test/cierre')
 def test_cierre():
     enviar_mensaje_cierre()
-    return "¡Prueba ejecutada! Mensaje de cierre enviado."
+    return "¡Prueba ejecutada! Se envió el mensaje de cierre al canal."
 
 @app.route('/test-refuerzo')
 def test_refuerzo():
     tarea_refuerzo_tarde()
     return "Prueba de refuerzo ejecutada manualmente."
+
+@app.route('/test/tabla')
+def test_tabla():
+    prueba_texto = (
+        "📰RESULTADOS ANIMALITOS📰\n"
+        "➖➖➖➖➖➖➖➖➖➖\n"
+        " HORA🎰G.ITO🪙L.INT\n"
+        "⏰08:30  29🐘    03🐛\n"
+        "⏰09:30  44🐾    14🕊️\n"
+        "⏰10:30  41🦘    32🐿️\n"
+        "MUCHA SUERTE EN SUS JUGADAS"
+    )
+    enviar_mensaje_con_banner(prueba_texto)
+    return "¡Prueba de tabla con banner ejecutada!"
 
 resultados_enviados = set()
 primera_ejecucion = True
@@ -174,23 +175,26 @@ def enviar_telegram(mensaje, disable_web_preview=True):
     except Exception as e:
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
+def enviar_mensaje_con_banner(texto_original):
+    mensaje_final = BANNER_AGENCIA + "\n\n" + texto_original
+    enviar_telegram(mensaje_final, disable_web_preview=True)
+
 def limpiar_memoria_diaria():
-    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal, FLYERS_CACHED
+    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal
     resultados_enviados.clear()
     primera_ejecucion = True
     taquilla_activa_hoy = False
     imagen_activa_id = None
     ultimo_id_foto_canal = None
-    FLYERS_CACHED.clear()
-    print("🧹 Memoria diaria, taquilla y caché de pollas limpiadas para arrancar el nuevo día.")
+    print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
 
-# --- DETECTOR AUTOMÁTICO DE TAQUILLA Y CAPTURA DE FLYERS DE POLLAS DESDE EL CANAL ---
+# --- DETECTOR AUTOMÁTICO DE TAQUILLA Y TABLAS DE RESULTADOS DESDE EL CANAL ---
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
     if not imagen_activa_id:
         return
     taquilla_activa_hoy = True
-    print("¡Taquilla activada manualmente desde el canal!")
+    print(f"¡Taquilla activada manualmente desde el canal!")
     try:
         bot.send_photo(
             chat_id=CANAL,
@@ -203,92 +207,32 @@ def activar_taquilla_proceso():
 
 @bot.channel_post_handler(content_types=['photo'])
 def capturar_foto_canal(message):
-    global ultimo_id_foto_canal, imagen_activa_id, FLYERS_CACHED
+    global ultimo_id_foto_canal, imagen_activa_id
     if message.photo:
         ultimo_id_foto_canal = message.photo[-1].file_id
         
     caption = message.caption if message.caption else ""
-    caption_upper = caption.upper()
-    
-    if "TAQUILLA ACTIVA" in caption_upper:
+    if "taquilla activa" in caption.lower():
         imagen_activa_id = ultimo_id_foto_canal
         activar_taquilla_proceso()
-    
-    # Capturar y almacenar en caché los flyers de pollas publicados en el canal
-    for polla in POLLAS_LIST:
-        if polla["keyword"] in caption_upper:
-            FLYERS_CACHED[polla["keyword"]] = ultimo_id_foto_canal
-            print(f"📥 Flyer de {polla['nombre']} guardado en caché correctamente.")
 
 @bot.channel_post_handler(content_types=['text'])
 def capturar_texto_canal(message):
     global imagen_activa_id, ultimo_id_foto_canal
     text = message.text if message.text else ""
+    
+    # 1. Detección de apertura de taquilla
     if "taquilla activa" in text.lower():
         if ultimo_id_foto_canal:
             imagen_activa_id = ultimo_id_foto_canal
             activar_taquilla_proceso()
-
-# --- LÓGICA DE ENVÍO DE POLLAS (APERTURA Y AVISO DE 10 MINUTOS ANTES DE CIERRE) ---
-def enviar_aviso_polla(polla, tipo):
-    nombre = polla["nombre"]
-    keyword = polla["keyword"]
-    h_cierre = polla["hora_cierre"]
-    
-    if tipo == "apertura":
-        texto = (
-            f"🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n"
-            f"🚨 ¡{nombre} ABIERTA! 🚨\n\n"
-            f"Ya se encuentra disponible la jugada. ¡Participa y asegura tu puesto para ganar!\n\n"
-            f"📲 Escríbenos al privado para tus jugadas.\n"
-            f"{ENLACE_FIRMA_CANAL}\n\n"
-            f"🍀 ¡Mucha suerte a todos! 💰"
-        )
-    elif tipo == "cierre_10min":
-        texto = (
-            f"🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n"
-            f"⚠️ ¡ATENCIÓN: ÚLTIMOS MINUTOS! ⚠️\n\n"
-            f"La **{nombre}** cierra sus jugadas hoy a las **{h_cierre}** (Faltan 10 minutos).\n\n"
-            f"¡No te quedes sin jugar!\n"
-            f"{ENLACE_FIRMA_CANAL}\n\n"
-            f"🔥 ¡Corre por tu jugada! 🏃‍♂️💨"
-        )
-    else:
-        return
-
-    # Enviar con foto si está en caché, de lo contrario enviar texto plano
-    if keyword in FLYERS_CACHED:
-        try:
-            bot.send_photo(
-                chat_id=CANAL,
-                photo=FLYERS_CACHED[keyword],
-                caption=texto,
-                parse_mode="Markdown"
-            )
-            print(f"📢 Aviso de {tipo} para {nombre} enviado con flyer.")
-        except Exception as e:
-            print(f"⚠️ Error al enviar foto de polla {nombre}: {e}, enviando solo texto...")
-            enviar_telegram(texto)
-    else:
-        enviar_telegram(texto)
-
-def verificar_y_enviar_pollas():
-    ahora = datetime.now()
-    hora_actual_str = ahora.strftime("%H:%M")
-    
-    for polla in POLLAS_LIST:
-        h_apertura = polla["hora_apertura"]
-        h_cierre = polla["hora_cierre"]
-        
-        # Calcular 10 minutos antes del cierre
-        cierre_dt = datetime.strptime(h_cierre, "%H:%M")
-        aviso_cierre_dt = cierre_dt - timedelta(minutes=10)
-        hora_aviso_cierre_str = aviso_cierre_dt.strftime("%H:%M")
-        
-        if hora_actual_str == h_apertura:
-            enviar_aviso_polla(polla, tipo="apertura")
-        elif hora_actual_str == hora_aviso_cierre_str:
-            enviar_aviso_polla(polla, tipo="cierre_10min")
+            
+    # 2. Detección automática de tablas de resultados enviadas al canal
+    if "RESULTADOS ANIMALITOS" in text.upper():
+        # Evita bucles si el mensaje ya contiene el banner de la agencia
+        if "HAROLD JOSE" not in text:
+            enviar_mensaje_con_banner(text)
+            print("📋 Tabla de resultados detectada en el canal y reenviada con el banner corporativo.")
 
 def tarea_refuerzo_tarde():
     global taquilla_activa_hoy, imagen_activa_id
@@ -484,7 +428,7 @@ def verificar_resultados():
                     res_ofi = requests.get(url_ofi, headers=headers, timeout=10, verify=False)
                     if res_ofi.status_code == 200:
                         soup_ofi = BeautifulSoup(res_ofi.text, 'html.parser')
-                        procesar_soporte_html(soup_ofi, nombre_ofi)
+                        procesar_soporte_html(soup_ofi, nombre_ofi, nuevos_encontrados=[])
                 except Exception as e_ofi:
                     print(f"⚠️ Error en respaldo {nombre_ofi}: {e_ofi}")
             return
@@ -549,147 +493,4 @@ def verificar_resultados():
                         if clave not in resultados_enviados:
                             item_dict = {
                                 'tipo': 'triple',
-                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombre_loteria or "TRÍO" in nombre_loteria else nombre_loteria,
-                                'hora': hora,
-                                'numero': num_triple,
-                                'terminal': terminal
-                            }
-                            if item_dict not in nuevos_encontrados:
-                                nuevos_encontrados.append(item_dict)
-                                resultados_enviados.add(clave)
-                else:
-                    match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
-                    if not match_res:
-                        continue
-
-                    resultado_final = limpiar_texto(match_res.group(1)).upper()
-                    clave = (nombre_loteria, hora, resultado_final)
-
-                    if primera_ejecucion:
-                        resultados_enviados.add(clave)
-                    else:
-                        if clave not in resultados_enviados:
-                            item_dict = {
-                                'tipo': 'animalito',
-                                'loteria': nombre_loteria,
-                                'hora': hora,
-                                'resultado': resultado_final
-                            }
-                            if item_dict not in nuevos_encontrados:
-                                nuevos_encontrados.append(item_dict)
-                                resultados_enviados.add(clave)
-
-        if primera_ejecucion:
-            primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total registros base: {len(resultados_enviados)}")
-            return
-
-        for item_nuevo in nuevos_encontrados:
-            if item_nuevo.get('tipo') == 'triple':
-                mensaje = (
-                    "🎯 AG HAROLD JOSE 🎯\n\n"
-                    f"🎰 {item_nuevo['loteria']}\n"
-                    f"🕒 {item_nuevo['hora']}  #{item_nuevo['numero']}\n"
-                    f"TERMINAL #{item_nuevo['terminal']}\n"
-                    f"{ENLACE_FIRMA_CANAL}"
-                )
-            else:
-                mensaje = (
-                    "🎯 AG HAROLD JOSE 🎯\n\n"
-                    f"🎰 {item_nuevo['loteria']}\n"
-                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
-                    f"{ENLACE_FIRMA_CANAL}"
-                )
-            enviar_telegram(mensaje, disable_web_preview=True)
-            time.sleep(3)
-
-    except Exception as e:
-        print(f"⚠️ Error general en resultados: {e}")
-
-def procesar_soporte_html(soup, nombre_loteria):
-    global resultados_enviados, primera_ejecucion
-    try:
-        elementos = soup.find_all(['div', 'article', 'section', 'li', 'td'])
-        for elem in elementos:
-            texto_elem = elem.get_text(" ", strip=True).upper()
-            if "PENDIENTE" in texto_elem or len(texto_elem) < 3:
-                continue
-            match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_elem)
-            if not match_h:
-                continue
-            hora = match_h.group(1).upper()
-            
-            if "TRIO" in nombre_loteria or "TRIPLE" in nombre_loteria:
-                match_num = re.search(r'#?(\d{3})', texto_elem)
-                if not match_num:
-                    continue
-                num_triple = match_num.group(1)
-                terminal = num_triple[-2:]
-                clave = (nombre_loteria, hora, num_triple)
-                if clave not in resultados_enviados and not primera_ejecucion:
-                    resultados_enviados.add(clave)
-                    mensaje = (
-                        "🎯 AG HAROLD JOSE 🎯\n\n"
-                        f"🎰 {nombre_loteria}\n"
-                        f"🕒 {hora}  #{num_triple}\n"
-                        f"TERMINAL #{terminal}\n"
-                        f"{ENLACE_FIRMA_CANAL}"
-                    )
-                    enviar_telegram(mensaje, disable_web_preview=True)
-                    time.sleep(3)
-            else:
-                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', texto_elem)
-                if match_res:
-                    res_val = limpiar_texto(match_res.group(1)).upper()
-                    clave = (nombre_loteria, hora, res_val)
-                    if clave not in resultados_enviados and not primera_ejecucion:
-                        resultados_enviados.add(clave)
-                        mensaje = (
-                            "🎯 AG HAROLD JOSE 🎯\n\n"
-                            f"🎰 {nombre_loteria}\n"
-                            f"🕒 {hora}  {res_val}\n"
-                            f"{ENLACE_FIRMA_CANAL}"
-                        )
-                        enviar_telegram(mensaje, disable_web_preview=True)
-                        time.sleep(3)
-    except Exception as e:
-        print(f"⚠️ Error en procesamiento de respaldo {nombre_loteria}: {e}")
-
-def loop_bot():
-    verificar_resultados()
-
-    # Programación de tareas automáticas
-    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
-    schedule.every().day.at("06:31").do(enviar_piramide_diaria)
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
-    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-    
-    # Comprobaciones por minuto (Resultados y Pollas con aviso de 10 min antes del cierre)
-    schedule.every(1).minute.do(verificar_resultados)
-    schedule.every(1).minute.do(verificar_y_enviar_pollas)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-if __name__ == '__main__':
-    t_schedule = Thread(target=loop_bot)
-    t_schedule.daemon = True
-    t_schedule.start()
-
-    t_bot = Thread(target=lambda: bot.infinity_polling(
-        skip_pending=True, 
-        allowed_updates=['message', 'edited_message', 'channel_post', 'edited_channel_post']
-    ))
-    t_bot.daemon = True
-    t_bot.start()
-
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombr
