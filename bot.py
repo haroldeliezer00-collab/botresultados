@@ -513,4 +513,52 @@ def verificar_resultados():
                 tipo = item.get('tipo')
                 loteria = item.get('loteria')
                 hora = item.get('hora')
-                if tipo 
+                if tipo == 'triple':
+                    numero = item.get('numero')
+                    terminal = item.get('terminal')
+                    mensaje_lote += f"*{loteria}* ({hora})\nNum: {numero} (Terminal: {terminal})\n\n"
+                else:
+                    resultado = item.get('resultado')
+                    mensaje_lote += f"*{loteria}* ({hora})\nResultado: {resultado}\n\n"
+            mensaje_lote += f"Enlace: {ENLACE_FIRMA_CANAL}"
+            enviar_telegram(mensaje_lote, disable_web_preview=True)
+
+        primera_ejecucion = False
+
+    except Exception as e:
+        print(f"⚠️ Error al verificar resultados automáticos: {e}")
+
+schedule.every().day.at("00:01").do(limpiar_memoria_diaria)
+schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
+schedule.every().day.at("06:31").do(enviar_piramide_diaria)
+schedule.every().day.at("06:30").do(enviar_tasa_dolar)
+schedule.every().day.at("07:00").do(enviar_saludo_matutino)
+schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
+schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
+schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
+schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
+schedule.every().day.at("18:30").do(enviar_tasa_dolar)
+schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
+schedule.every(3).minutes.do(verificar_resultados)
+
+def run_schedule():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
+if __name__ == '__main__':
+    t_schedule = Thread(target=run_schedule)
+    t_schedule.daemon = True
+    t_schedule.start()
+
+    t_flask = Thread(target=run_flask)
+    t_flask.daemon = True
+    t_flask.start()
+
+    print("🤖 Bot de la Agencia Harold José iniciado correctamente...")
+    bot.infinity_none_stop()
+
