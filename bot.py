@@ -363,7 +363,6 @@ def verificar_resultados():
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
         nuevos_encontrados = []
 
-        # Recorrer todas las URLs configuradas para escanear
         for url_actual in URLS_ESCANEO:
             try:
                 respuesta = requests.get(url_actual, headers=headers, timeout=12, verify=False)
@@ -371,79 +370,150 @@ def verificar_resultados():
                     continue
 
                 soup = BeautifulSoup(respuesta.text, 'html.parser')
-                tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
 
-                for tarjeta in tarjetas:
-                    nombre_loteria = ""
-                    posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
-                    for pt in posibles_titulos:
-                        t_text = pt.get_text(" ", strip=True).upper()
-                        if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
-                            if t_text not in ["WINBIG", "RESULTADOS", "GUACA ACTIVA"]:
-                                nombre_loteria = t_text
-                                break
+                # 1. Procesamiento específico para Triple Guaca
+                if "guacaactiva.com" in url_actual:
+                    nombre_loteria = "TRIPLE GUACA37"
+                    tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
+                    if not tarjetas:
+                        tarjetas = soup.find_all('div')
 
-                    if not nombre_loteria:
-                        lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
-                        for linea in lineas:
-                            if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
-                                nombre_loteria = linea
-                                break
-
-                    # Ajustes de nombre según la URL escaneada si el título viene genérico
-                    if "guacaactiva.com" in url_actual and not nombre_loteria:
-                        nombre_loteria = "TRIPLE GUACA"
-                    elif "trio_activo" in url_actual and not nombre_loteria:
-                        nombre_loteria = "TRIO ACTIVO"
-
-                    if not nombre_loteria or len(nombre_loteria) > 40:
-                        continue
-
-                    nombre_loteria = limpiar_texto(nombre_loteria)
-
-                    # Omitir RULETA ROYAL explícitamente
-                    if "RULETA ROYAL" in nombre_loteria:
-                        continue
-
-                    slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
-                    if not slots_sorteo:
-                        slots_sorteo = [tarjeta]
-
-                    for slot in slots_sorteo:
-                        texto_slot = slot.get_text(" ", strip=True).upper()
-                        if "PENDIENTE" in texto_slot:
+                    for tarjeta in tarjetas:
+                        texto_slot = tarjeta.get_text(" ", strip=True).upper()
+                        if "PENDIENTE" in texto_slot or "..." in texto_slot:
                             continue
 
-                        match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
+                        match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))', texto_slot)
                         if not match_h:
                             continue
                         hora = match_h.group(1).upper()
 
-                        resultado_final = None
-
-                        # 1. Intentar buscar formato de animalito tradicional (Ej: 06 - RANA)
-                        match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
-                        if match_res:
-                            resultado_final = limpiar_texto(match_res.group(1)).upper()
-                        else:
-                            # 2. Si no es animalito, buscar formato de 3 dígitos (Para Triple Guaca / Trío Activo, ej: 606 o 954)
-                            match_triple = re.search(r'\b(\d{3})\b', texto_slot)
-                            if match_triple:
-                                resultado_final = match_triple.group(1)
-
-                        if not resultado_final:
+                        match_triple = re.search(r'\b(\d{3})\b', texto_slot)
+                        if not match_triple:
                             continue
 
+                        resultado_final = match_triple.group(1)
+                        terminal = resultado_final[-2:]
                         clave = (nombre_loteria, hora, resultado_final)
 
                         if primera_ejecucion:
                             resultados_enviados.add(clave)
                         else:
                             if clave not in resultados_enviados:
-                                item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                                item_dict = {
+                                    'loteria': nombre_loteria,
+                                    'hora': hora,
+                                    'resultado': resultado_final,
+                                    'terminal': terminal,
+                                    'tipo': 'triple'
+                                }
                                 if item_dict not in nuevos_encontrados:
                                     nuevos_encontrados.append(item_dict)
                                     resultados_enviados.add(clave)
+
+                # 2. Procesamiento específico para Trío Activo
+                elif "trio_activo" in url_actual:
+                    nombre_loteria = "TRÍO ACTIVO"
+                    tarjetas = soup.find_all(['div', 'article', 'section', 'figure'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
+                    if not tarjetas:
+                        tarjetas = soup.find_all('div')
+
+                    for tarjeta in tarjetas:
+                        texto_slot = tarjeta.get_text(" ", strip=True).upper()
+                        if "PENDIENTE" in texto_slot or "..." in texto_slot:
+                            continue
+
+                        match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))', texto_slot)
+                        if not match_h:
+                            continue
+                        hora = match_h.group(1).upper()
+
+                        match_triple = re.search(r'\b(\d{3})\b', texto_slot)
+                        if not match_triple:
+                            continue
+
+                        resultado_final = match_triple.group(1)
+                        terminal = resultado_final[-2:]
+                        clave = (nombre_loteria, hora, resultado_final)
+
+                        if primera_ejecucion:
+                            resultados_enviados.add(clave)
+                        else:
+                            if clave not in resultados_enviados:
+                                item_dict = {
+                                    'loteria': nombre_loteria,
+                                    'hora': hora,
+                                    'resultado': resultado_final,
+                                    'terminal': terminal,
+                                    'tipo': 'triple'
+                                }
+                                if item_dict not in nuevos_encontrados:
+                                    nuevos_encontrados.append(item_dict)
+                                    resultados_enviados.add(clave)
+
+                # 3. Procesamiento estándar para Winbigvzla (u otras)
+                else:
+                    tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
+                    for tarjeta in tarjetas:
+                        nombre_loteria = ""
+                        posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
+                        for pt in posibles_titulos:
+                            t_text = pt.get_text(" ", strip=True).upper()
+                            if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
+                                if t_text not in ["WINBIG", "RESULTADOS"]:
+                                    nombre_loteria = t_text
+                                    break
+
+                        if not nombre_loteria:
+                            lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
+                            for linea in lineas:
+                                if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
+                                    nombre_loteria = linea
+                                    break
+
+                        if not nombre_loteria or len(nombre_loteria) > 40:
+                            continue
+
+                        nombre_loteria = limpiar_texto(nombre_loteria)
+
+                        if "RULETA ROYAL" in nombre_loteria:
+                            continue
+
+                        slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
+                        if not slots_sorteo:
+                            slots_sorteo = [tarjeta]
+
+                        for slot in slots_sorteo:
+                            texto_slot = slot.get_text(" ", strip=True).upper()
+                            if "PENDIENTE" in texto_slot:
+                                continue
+
+                            match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
+                            if not match_h:
+                                continue
+                            hora = match_h.group(1).upper()
+
+                            match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                            if not match_res:
+                                continue
+
+                            resultado_final = limpiar_texto(match_res.group(1)).upper()
+                            clave = (nombre_loteria, hora, resultado_final)
+
+                            if primera_ejecucion:
+                                resultados_enviados.add(clave)
+                            else:
+                                if clave not in resultados_enviados:
+                                    item_dict = {
+                                        'loteria': nombre_loteria,
+                                        'hora': hora,
+                                        'resultado': resultado_final,
+                                        'tipo': 'animalito'
+                                    }
+                                    if item_dict not in nuevos_encontrados:
+                                        nuevos_encontrados.append(item_dict)
+                                        resultados_enviados.add(clave)
+
             except Exception as e_url:
                 print(f"⚠️ Error escaneando {url_actual}: {e_url}")
 
@@ -453,11 +523,19 @@ def verificar_resultados():
             return
 
         for item_nuevo in nuevos_encontrados:
-            mensaje = (
-                "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 {item_nuevo['loteria']}\n"
-                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
-            )
+            if item_nuevo.get('tipo') == 'triple':
+                mensaje = (
+                    "🎯 AG HAROLD JOSE 🎯\n\n"
+                    f"🎰 {item_nuevo['loteria']}\n"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
+                    f"       TERMINAL {item_nuevo['terminal']}"
+                )
+            else:
+                mensaje = (
+                    "🎯 AG HAROLD JOSE 🎯\n\n"
+                    f"🎰 {item_nuevo['loteria']}\n"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
+                )
             enviar_telegram(mensaje, disable_web_preview=True)
             time.sleep(3)
 
