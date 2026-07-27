@@ -1350,8 +1350,6 @@ def enviar_mensaje_cierre():
         )
 
     return resultado
-```
-```python
 # ============================================================
 # VERIFICACIÓN AUTOMÁTICA DE RESULTADOS
 # ============================================================
