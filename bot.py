@@ -322,7 +322,13 @@ def enviar_tasa_dolar():
             if dolar_div:
                 strong_elem = dolar_div.find('strong')
                 if strong_elem:
-                    precio_dolar = strong_elem.get_text(strip=True)
+                    raw_precio = strong_elem.get_text(strip=True)
+                    try:
+                        # Limpiar formato de la página y redondear a 2 decimales para eliminar ceros y mostrar limpio
+                        val_limpio = float(raw_precio.replace('.', '').replace(',', '.'))
+                        precio_dolar = f"{val_limpio:.2f}".replace('.', ',')
+                    except Exception:
+                        precio_dolar = raw_precio
 
         mensaje = (
             "💵 TASA OFICIAL BCV 💵\n\n"
