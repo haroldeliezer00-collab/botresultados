@@ -371,38 +371,39 @@ def verificar_resultados():
 
                 soup = BeautifulSoup(respuesta.text, 'html.parser')
 
-                # Determinar nombre fijo según la URL específica
                 nombre_base = ""
                 if "guacaactiva.com" in url_actual:
                     nombre_base = "TRIPLE GUACA"
                 elif "trio_activo" in url_actual:
                     nombre_base = "TRÍO ACTIVO"
 
-                elementos = soup.find_all(['div', 'article', 'section', 'li', 'td'], class_=re.compile(r'card|box|item|lotto|result|sorteo|col', re.IGNORECASE))
+                # Búsqueda más amplia de elementos en la página
+                elementos = soup.find_all(['div', 'article', 'section', 'li', 'td', 'span', 'p'])
                 if not elementos:
-                    elementos = soup.find_all('div')
+                    continue
 
                 for elem in elementos:
                     texto_elem = elem.get_text(" ", strip=True).upper()
                     
-                    if "PENDIENTE" in texto_elem or "..." in texto_elem:
+                    if "PENDIENTE" in texto_elem or len(texto_elem) > 300:
                         continue
 
-                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_elem)
+                    # Detección flexible de hora (admite con o sin AM/PM)
+                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_elem)
                     if not match_h:
                         continue
                     hora = match_h.group(1).upper()
+                    if "AM" not in hora and "PM" not in hora:
+                        # Si no tiene AM/PM explícito, inferir según la hora numérica si es necesario o dejarlo estandarizado
+                        pass
 
                     nombre_loteria = nombre_base
                     if not nombre_loteria:
-                        posibles_titulos = elem.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
-                        for pt in posibles_titulos:
-                            t_text = pt.get_text(" ", strip=True).upper()
-                            if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
-                                if t_text not in ["WINBIG", "RESULTADOS"]:
-                                    nombre_loteria = t_text
-                                    break
-                        if not nombre_loteria:
+                        if "GUACA" in texto_elem:
+                            nombre_loteria = "TRIPLE GUACA"
+                        elif "TRIO" in texto_elem or "ACTIVO" in texto_elem:
+                            nombre_loteria = "TRÍO ACTIVO"
+                        else:
                             continue
 
                     nombre_loteria = limpiar_texto(nombre_loteria)
@@ -421,8 +422,8 @@ def verificar_resultados():
                         tipo_res = 'triple'
                         terminal = resultado_final[-2:]
                     else:
-                        # 2. Buscar formato Animalito (Ej: 06 - RANA)
-                        match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_elem)
+                        # 2. Buscar formato Animalito (Ej: 06 - RANA o similar)
+                        match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_elem)
                         if match_res:
                             resultado_final = limpiar_texto(match_res.group(1)).upper()
                             tipo_res = 'animalito'
@@ -430,7 +431,6 @@ def verificar_resultados():
                     if not resultado_final:
                         continue
 
-                    # Clave única por sorteo (Lotería + Hora) para evitar repeticiones y spam definitivo
                     clave_sorteo = (nombre_loteria.upper(), hora.upper())
 
                     if primera_ejecucion:
@@ -453,7 +453,7 @@ def verificar_resultados():
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total registros base: {len(resultados_enviados)}")
+            print(f"🚀 Sincronización inicial lista. Total registros base capturados: {len(resultados_enviados)}")
             return
 
         for item_nuevo in nuevos_encontrados:
