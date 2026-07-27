@@ -347,18 +347,15 @@ def verificar_resultados():
             try:
                 print(f"🔍 Conectando a: {url_actual}")
                 respuesta = requests.get(url_actual, headers=headers, timeout=12, verify=False)
-                print(f"📡 Status Code para {url_actual}: {respuesta.status_code}")
-                
                 if respuesta.status_code != 200:
                     continue
 
                 soup = BeautifulSoup(respuesta.text, 'html.parser')
 
-                # Método flexible y robusto: busca cualquier bloque/div/article/section/li/td que contenga texto
-                elementos = soup.find_all(['div', 'article', 'section', 'li', 'td', 'span', 'p'])
-                print(f"📦 Bloques totales analizados en {url_actual}: {len(elementos)}")
-
-                current_loteria = "GUACA ACTIVA" if "guacaactiva.com" in url_actual else ("TRÍO ACTIVO" if "trio_activo" in url_actual else "WINBIG")
+                # Buscar bloques o tarjetas de resultados
+                elementos = soup.find_all(['div', 'article', 'section', 'li', 'td'])
+                if not elementos:
+                    elementos = [soup]
 
                 for elem in elementos:
                     texto_elem = elem.get_text(" ", strip=True).upper()
@@ -366,38 +363,58 @@ def verificar_resultados():
                     if len(texto_elem) < 3 or "PENDIENTE" in texto_elem or "..." in texto_elem:
                         continue
 
-                    # Detectar hora tipo 11:00 AM / 01:00 PM / 9:00
+                    # Buscar hora tipo 11:00 AM / 01:40 PM
                     match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_elem)
                     if not match_h:
                         continue
                     hora = match_h.group(1).upper()
 
-                    # Detectar nombre de lotería según el contexto del bloque o URL
+                    # Extraer el nombre real de la lotería desde el propio bloque (Ej: GATAZO, GUACA ACTIVA, etc.)
+                    nombre_loteria = None
+
+                    # Si es Guaca Activa
                     if "guacaactiva.com" in url_actual:
                         if "MEGA" in texto_elem:
-                            current_loteria = "MEGA GUACA"
+                            nombre_loteria = "MEGA GUACA"
                         elif "TRIPLE" in texto_elem:
-                            current_loteria = "TRIPLE GUACA"
-                        elif "GUACA" in texto_elem:
-                            current_loteria = "GUACA ACTIVA"
-                    elif "winbigvzla.com" in url_actual:
-                        current_loteria = "WINBIG"
+                            nombre_loteria = "TRIPLE GUACA"
+                        else:
+                            nombre_loteria = "GUACA ACTIVA"
+                    elif "trio_activo" in url_actual:
+                        nombre_loteria = "TRÍO ACTIVO"
+                    else:
+                        # Para páginas como Winbig, buscar títulos o encabezados dentro del bloque
+                        posibles_titulos = elem.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'span'], class_=re.compile(r'title|name|lotto|game|header', re.IGNORECASE))
+                        for pt in posibles_titulos:
+                            t_text = pt.get_text(" ", strip=True).upper()
+                            if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
+                                if t_text not in ["WINBIG", "RESULTADOS"]:
+                                    nombre_loteria = t_text
+                                    break
+                        
+                        # Si no se halló en etiquetas internas, buscar en las primeras palabras del texto del bloque
+                        if not nombre_loteria:
+                            palabras = [w for w in texto_elem.split() if not re.search(r'\d', w)]
+                            if palabras and palabras[0] not in ["WINBIG", "RESULTADOS", "SORTEO"]:
+                                nombre_loteria = palabras[0]
+                            else:
+                                nombre_loteria = "GATAZO" # Respaldo predeterminado si es de Winbig
 
-                    if "RULETA ROYAL" in current_loteria:
+                    nombre_loteria = limpiar_texto(nombre_loteria)
+                    if "RULETA ROYAL" in nombre_loteria:
                         continue
 
                     resultado_final = None
                     tipo_res = 'animalito'
                     terminal = None
 
-                    # Buscar Triple (3 dígitos) si aplica
+                    # Detectar si es Triple (3 dígitos) o Animalito normal
                     match_triple = re.search(r'\b(\d{3})\b', texto_elem)
-                    if match_triple and current_loteria == "TRIPLE GUACA":
+                    if match_triple and "TRIPLE" in nombre_loteria:
                         resultado_final = match_triple.group(1)
                         tipo_res = 'triple'
                         terminal = resultado_final[-2:]
                     else:
-                        # Buscar patrón de animalito (ej: 12 - BURRO o 12-BURRO)
                         match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_elem)
                         if match_res:
                             resultado_final = limpiar_texto(match_res.group(1)).upper()
@@ -406,14 +423,14 @@ def verificar_resultados():
                     if not resultado_final:
                         continue
 
-                    clave_sorteo = (current_loteria.upper(), hora.upper())
+                    clave_sorteo = (nombre_loteria.upper(), hora.upper())
 
                     if primera_ejecucion:
                         resultados_enviados.add(clave_sorteo)
                     else:
                         if clave_sorteo not in resultados_enviados:
                             item_dict = {
-                                'loteria': current_loteria,
+                                'loteria': nombre_loteria,
                                 'hora': hora,
                                 'resultado': resultado_final,
                                 'terminal': terminal,
@@ -422,7 +439,7 @@ def verificar_resultados():
                             if item_dict not in nuevos_encontrados:
                                 nuevos_encontrados.append(item_dict)
                                 resultados_enviados.add(clave_sorteo)
-                                print(f"✨ ¡Nuevo resultado detectado!: {current_loteria} - {hora} - {resultado_final}")
+                                print(f"✨ ¡Nuevo resultado detectado!: {nombre_loteria} - {hora} - {resultado_final}")
 
             except Exception as e_url:
                 print(f"⚠️ Error escaneando {url_actual}: {e_url}")
