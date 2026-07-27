@@ -559,7 +559,6 @@ def activar_taquilla_proceso():
         )
 
         return False
-        ```python
 # ============================================================
 # CAPTURA DE FOTOS PUBLICADAS EN EL CANAL
 # ============================================================
