@@ -22,20 +22,31 @@ import telebot
 # Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Credenciales y canal principal actualizado
+# Credenciales y canal principal actualizados
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL = '@pruebajsj'
+ENLACE_FIRMA_CANAL = 'https://t.me/pruebajsj'
 
 bot = telebot.TeleBot(TOKEN)
 
-# URLs principales y de respaldo que el bot va a escanear activamente
-URLS_ESCANEO = [
-    'https://lotery.winbigvzla.com/resultados',
-    'https://www.guacaactiva.com/',
-    'https://www.lottoactivo.com/resultados/trio_activo/'
-]
-
+URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
+
+# Enlaces oficiales adicionales para respaldo/verificación
+ENLACES_OFICIALES = {
+    "LOTTO ACTIVO": "https://www.lottoactivo.com/resultados/lotto_activo/",
+    "GUACHARO ACTIVO": "https://www.guacharoactivo.com.ve/resultados",
+    "LOTO CHAIMA": "https://lotochaima.com/",
+    "LA GRANJITA": "https://lagranjitaonline.com/",
+    "SELVA PLUS": "https://www.selvaplus.com/resultados",
+    "MONJE MILLONARIO": "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
+    "LOTTO ACTIVO RD INTERNACIONAL": "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
+    "GUACA ACTIVA": "https://lotery.winbigvzla.com/resultados",
+    "MEGA GUACA": "https://lotery.winbigvzla.com/resultados",
+    "EL GUACHARITO MILLONARIO": "https://elguacharitomillonario.com/",
+    "TRIO ACTIVO": "https://www.lottoactivo.com/resultados/trio_activo/",
+    "TRIPLE GUACA37": "https://www.guacaactiva.com/"
+}
 
 # Variables de estado diario para la Taquilla
 taquilla_activa_hoy = False
@@ -51,7 +62,7 @@ TEXTO_TAQUILLA = (
     "https://wa.me/p/33319103291071105/584124489363\n"
     "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
     "RESULTADOS AUTOMÁTICOS\n"
-    "https://t.me/pruebajsj\n\n"
+    f"{ENLACE_FIRMA_CANAL}\n\n"
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
@@ -62,7 +73,7 @@ def home():
     estado_texto = "ACTIVA" if taquilla_activa_hoy else "INACTIVA"
     color_estado = "green" if taquilla_activa_hoy else "red"
     return (
-        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal @pruebajsj!<br>"
+        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
         f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
         "<b>Enlaces de prueba rápida (Test):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
@@ -124,6 +135,7 @@ def limpiar_texto(texto):
     return " ".join(texto.split())
 
 def enviar_telegram(mensaje, disable_web_preview=True):
+    """Función centralizada para enviar mensajes al canal oficial."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CANAL, 
@@ -147,6 +159,7 @@ def limpiar_memoria_diaria():
     ultimo_id_foto_canal = None
     print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
 
+# --- DETECTOR AUTOMÁTICO DE TAQUILLA ACTIVA DESDE EL CANAL ---
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
     if not imagen_activa_id:
@@ -185,6 +198,7 @@ def capturar_texto_canal(message):
 
 def tarea_refuerzo_tarde():
     global taquilla_activa_hoy, imagen_activa_id
+    
     if taquilla_activa_hoy and imagen_activa_id:
         print("Ejecutando refuerzo de taquilla de las 3:30 p.m.")
         try:
@@ -199,6 +213,7 @@ def tarea_refuerzo_tarde():
             print(f"Error al enviar refuerzo de tarde: {e}")
     else:
         print("A las 3:30 p.m. la taquilla no había sido abierta hoy, se omite el refuerzo.")
+# -------------------------------------------------------------
 
 def enviar_saludo_madrugada():
     mensaje = (
@@ -305,7 +320,7 @@ def enviar_saludo_matutino():
         "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-        "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
+        "📸 Instagram: https://www.instagram.com/agharold_jose (@agharold_jose)\n"
         "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
         "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
     )
@@ -322,7 +337,7 @@ def enviar_aviso_taquilla():
         "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
         "💬 También estamos disponibles por Telegram:\n"
-        "👉 t.me/ag\\_haroldjose\n\n"
+        "👉 t.me/pruebajsj\n\n"
         "¡Mucha suerte en sus jugadas! 🍀🔥"
     )
     enviar_telegram(mensaje_promo, disable_web_preview=True)
@@ -341,112 +356,117 @@ def verificar_resultados():
     global resultados_enviados, primera_ejecucion
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+        
+        # Intentar conectar a la página principal de Winbig
+        respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15, verify=False)
+        
+        # Si falla Winbig, recorrer automáticamente las páginas oficiales de respaldo
+        if respuesta.status_code != 200:
+            print(f"⚠️ Winbig no disponible (Status {respuesta.status_code}). Buscando en fuentes oficiales de respaldo...")
+            for nombre_ofi, url_ofi in ENLACES_OFICIALES.items():
+                try:
+                    res_ofi = requests.get(url_ofi, headers=headers, timeout=10, verify=False)
+                    if res_ofi.status_code == 200:
+                        soup_ofi = BeautifulSoup(res_ofi.text, 'html.parser')
+                        procesar_soporte_html(soup_ofi, nombre_ofi, nuevos_encontrados=[])
+                except Exception as e_ofi:
+                    print(f"⚠️ Error en respaldo {nombre_ofi}: {e_ofi}")
+            return
+
+        soup = BeautifulSoup(respuesta.text, 'html.parser')
+        tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
+
         nuevos_encontrados = []
 
-        for url_actual in URLS_ESCANEO:
-            try:
-                print(f"🔍 Conectando a: {url_actual}")
-                respuesta = requests.get(url_actual, headers=headers, timeout=12, verify=False)
-                if respuesta.status_code != 200:
+        for tarjeta in tarjetas:
+            nombre_loteria = ""
+            posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
+            for pt in posibles_titulos:
+                t_text = pt.get_text(" ", strip=True).upper()
+                if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
+                    if t_text not in ["WINBIG", "RESULTADOS"]:
+                        nombre_loteria = t_text
+                        break
+
+            if not nombre_loteria:
+                lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
+                for linea in lineas:
+                    if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
+                        nombre_loteria = linea
+                        break
+
+            if not nombre_loteria or len(nombre_loteria) > 40:
+                continue
+
+            nombre_loteria = limpiar_texto(nombre_loteria)
+
+            # EXCLUIR RULETA ROYAL
+            if "RULETA ROYAL" in nombre_loteria:
+                continue
+
+            slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
+            if not slots_sorteo:
+                slots_sorteo = [tarjeta]
+
+            for slot in slots_sorteo:
+                texto_slot = slot.get_text(" ", strip=True).upper()
+                if "PENDIENTE" in texto_slot:
                     continue
 
-                soup = BeautifulSoup(respuesta.text, 'html.parser')
+                match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM))', texto_slot)
+                if not match_h:
+                    continue
+                hora = match_h.group(1).upper()
 
-                # Buscar bloques o tarjetas de resultados
-                elementos = soup.find_all(['div', 'article', 'section', 'li', 'td'])
-                if not elementos:
-                    elementos = [soup]
-
-                for elem in elementos:
-                    texto_elem = elem.get_text(" ", strip=True).upper()
+                es_triple = "TRIO ACTIVO" in nombre_loteria or "TRÍO ACTIVO" in nombre_loteria or "TRIPLE GUACA" in nombre_loteria
+                
+                if es_triple:
+                    match_num = re.search(r'#?(\d{3})', texto_slot)
+                    if not match_num:
+                        continue
+                    num_triple = match_num.group(1)
+                    terminal = num_triple[-2:]
                     
-                    if len(texto_elem) < 3 or "PENDIENTE" in texto_elem or "..." in texto_elem:
-                        continue
-
-                    # Buscar hora tipo 11:00 AM / 01:40 PM
-                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_elem)
-                    if not match_h:
-                        continue
-                    hora = match_h.group(1).upper()
-
-                    # Extraer el nombre real de la lotería desde el propio bloque (Ej: GATAZO, GUACA ACTIVA, etc.)
-                    nombre_loteria = None
-
-                    # Si es Guaca Activa
-                    if "guacaactiva.com" in url_actual:
-                        if "MEGA" in texto_elem:
-                            nombre_loteria = "MEGA GUACA"
-                        elif "TRIPLE" in texto_elem:
-                            nombre_loteria = "TRIPLE GUACA"
-                        else:
-                            nombre_loteria = "GUACA ACTIVA"
-                    elif "trio_activo" in url_actual:
-                        nombre_loteria = "TRÍO ACTIVO"
-                    else:
-                        # Para páginas como Winbig, buscar títulos o encabezados dentro del bloque
-                        posibles_titulos = elem.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'strong', 'b', 'span'], class_=re.compile(r'title|name|lotto|game|header', re.IGNORECASE))
-                        for pt in posibles_titulos:
-                            t_text = pt.get_text(" ", strip=True).upper()
-                            if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
-                                if t_text not in ["WINBIG", "RESULTADOS"]:
-                                    nombre_loteria = t_text
-                                    break
-                        
-                        # Si no se halló en etiquetas internas, buscar en las primeras palabras del texto del bloque
-                        if not nombre_loteria:
-                            palabras = [w for w in texto_elem.split() if not re.search(r'\d', w)]
-                            if palabras and palabras[0] not in ["WINBIG", "RESULTADOS", "SORTEO"]:
-                                nombre_loteria = palabras[0]
-                            else:
-                                nombre_loteria = "GATAZO" # Respaldo predeterminado si es de Winbig
-
-                    nombre_loteria = limpiar_texto(nombre_loteria)
-                    if "RULETA ROYAL" in nombre_loteria:
-                        continue
-
-                    resultado_final = None
-                    tipo_res = 'animalito'
-                    terminal = None
-
-                    # Detectar si es Triple (3 dígitos) o Animalito normal
-                    match_triple = re.search(r'\b(\d{3})\b', texto_elem)
-                    if match_triple and "TRIPLE" in nombre_loteria:
-                        resultado_final = match_triple.group(1)
-                        tipo_res = 'triple'
-                        terminal = resultado_final[-2:]
-                    else:
-                        match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_elem)
-                        if match_res:
-                            resultado_final = limpiar_texto(match_res.group(1)).upper()
-                            tipo_res = 'animalito'
-
-                    if not resultado_final:
-                        continue
-
-                    clave_sorteo = (nombre_loteria.upper(), hora.upper())
-
+                    clave = (nombre_loteria, hora, num_triple)
                     if primera_ejecucion:
-                        resultados_enviados.add(clave_sorteo)
+                        resultados_enviados.add(clave)
                     else:
-                        if clave_sorteo not in resultados_enviados:
+                        if clave not in resultados_enviados:
                             item_dict = {
-                                'loteria': nombre_loteria,
+                                'tipo': 'triple',
+                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombre_loteria or "TRÍO" in nombre_loteria else nombre_loteria,
                                 'hora': hora,
-                                'resultado': resultado_final,
-                                'terminal': terminal,
-                                'tipo': tipo_res
+                                'numero': num_triple,
+                                'terminal': terminal
                             }
                             if item_dict not in nuevos_encontrados:
                                 nuevos_encontrados.append(item_dict)
-                                resultados_enviados.add(clave_sorteo)
-                                print(f"✨ ¡Nuevo resultado detectado!: {nombre_loteria} - {hora} - {resultado_final}")
+                                resultados_enviados.add(clave)
+                else:
+                    match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                    if not match_res:
+                        continue
 
-            except Exception as e_url:
-                print(f"⚠️ Error escaneando {url_actual}: {e_url}")
+                    resultado_final = limpiar_texto(match_res.group(1)).upper()
+                    clave = (nombre_loteria, hora, resultado_final)
+
+                    if primera_ejecucion:
+                        resultados_enviados.add(clave)
+                    else:
+                        if clave not in resultados_enviados:
+                            item_dict = {
+                                'tipo': 'animalito',
+                                'loteria': nombre_loteria,
+                                'hora': hora,
+                                'resultado': resultado_final
+                            }
+                            if item_dict not in nuevos_encontrados:
+                                nuevos_encontrados.append(item_dict)
+                                resultados_enviados.add(clave)
 
         if primera_ejecucion:
             primera_ejecucion = False
-            print(f"🚀 Sincronización inicial lista. Total registros base cargados: {len(resultados_enviados)}")
+            print(f"🚀 Sincronización inicial lista. Total registros base: {len(resultados_enviados)}")
             return
 
         for item_nuevo in nuevos_encontrados:
@@ -454,14 +474,16 @@ def verificar_resultados():
                 mensaje = (
                     "🎯 AG HAROLD JOSE 🎯\n\n"
                     f"🎰 {item_nuevo['loteria']}\n"
-                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
-                    f"       TERMINAL {item_nuevo['terminal']}"
+                    f"🕒 {item_nuevo['hora']}  #{item_nuevo['numero']}\n"
+                    f"TERMINAL #{item_nuevo['terminal']}\n"
+                    f"{ENLACE_FIRMA_CANAL}"
                 )
             else:
                 mensaje = (
                     "🎯 AG HAROLD JOSE 🎯\n\n"
                     f"🎰 {item_nuevo['loteria']}\n"
-                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
+                    f"{ENLACE_FIRMA_CANAL}"
                 )
             enviar_telegram(mensaje, disable_web_preview=True)
             time.sleep(3)
@@ -469,23 +491,69 @@ def verificar_resultados():
     except Exception as e:
         print(f"⚠️ Error general en resultados: {e}")
 
+def procesar_soporte_html(soup, nombre_loteria, nuevos_encontrados):
+    global resultados_enviados, primera_ejecucion
+    try:
+        elementos = soup.find_all(['div', 'article', 'section', 'li', 'td'])
+        for elem in elementos:
+            texto_elem = elem.get_text(" ", strip=True).upper()
+            if "PENDIENTE" in texto_elem or len(texto_elem) < 3:
+                continue
+            match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_elem)
+            if not match_h:
+                continue
+            hora = match_h.group(1).upper()
+            
+            if "TRIO" in nombre_loteria or "TRIPLE" in nombre_loteria:
+                match_num = re.search(r'#?(\d{3})', texto_elem)
+                if not match_num:
+                    continue
+                num_triple = match_num.group(1)
+                terminal = num_triple[-2:]
+                clave = (nombre_loteria, hora, num_triple)
+                if clave not in resultados_enviados and not primera_ejecucion:
+                    resultados_enviados.add(clave)
+                    mensaje = (
+                        "🎯 AG HAROLD JOSE 🎯\n\n"
+                        f"🎰 {nombre_loteria}\n"
+                        f"🕒 {hora}  #{num_triple}\n"
+                        f"TERMINAL #{terminal}\n"
+                        f"{ENLACE_FIRMA_CANAL}"
+                    )
+                    enviar_telegram(mensaje, disable_web_preview=True)
+                    time.sleep(3)
+            else:
+                match_res = re.search(r'(\d{1,2}\s*-\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+)', texto_elem)
+                if match_res:
+                    res_val = limpiar_texto(match_res.group(1)).upper()
+                    clave = (nombre_loteria, hora, res_val)
+                    if clave not in resultados_enviados and not primera_ejecucion:
+                        resultados_enviados.add(clave)
+                        mensaje = (
+                            "🎯 AG HAROLD JOSE 🎯\n\n"
+                            f"🎰 {nombre_loteria}\n"
+                            f"🕒 {hora}  {res_val}\n"
+                            f"{ENLACE_FIRMA_CANAL}"
+                        )
+                        enviar_telegram(mensaje, disable_web_preview=True)
+                        time.sleep(3)
+    except Exception as e:
+        print(f"⚠️ Error en procesamiento de respaldo {nombre_loteria}: {e}")
+
 def loop_bot():
     verificar_resultados()
 
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
     schedule.every().day.at("06:31").do(enviar_piramide_diaria)
-    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
     schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    
+    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
+    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
-    
     schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
-    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-
     schedule.every(1).minute.do(verificar_resultados)
 
     while True:
