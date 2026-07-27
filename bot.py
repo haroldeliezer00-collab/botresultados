@@ -247,28 +247,51 @@ def generar_piramide():
     seed_val = int(ahora.strftime("%Y%m%d"))
     rnd = random.Random(seed_val)
     
+    # Extracción que diferencia estrictamente entre "00", "0" y del "01" al "36"
     candidates = []
     for f in filas:
-        for idx in range(len(f) - 1):
-            val = (f[idx] * 10 + f[idx+1]) % 37
-            candidates.append(f"{val:02d}")
-        for num in f:
-            val2 = (num * 7 + idx) % 37
-            candidates.append(f"{val2:02d}")
+        if len(f) >= 2:
+            for idx in range(len(f) - 1):
+                raw_val = f[idx] * 10 + f[idx+1]
+                rem = raw_val % 38
+                if rem == 0:
+                    candidates.append("00")
+                elif rem == 1:
+                    candidates.append("0")
+                else:
+                    candidates.append(f"{rem - 1:02d}")
+        elif len(f) == 1:
+            raw_val = f[0] * 11
+            rem = raw_val % 38
+            if rem == 0:
+                candidates.append("00")
+            elif rem == 1:
+                candidates.append("0")
+            else:
+                candidates.append(f"{rem - 1:02d}")
             
     unique_candidates = []
     for c in candidates:
-        if c not in unique_candidates:
-            unique_candidates.append(c)
-            
+        if c == "00" or c == "0" or (c.isdigit() and 1 <= int(c) <= 36):
+            if c not in unique_candidates:
+                unique_candidates.append(c)
+                
     while len(unique_candidates) < 6:
-        val_rand = rnd.randint(0, 36)
-        c_rand = f"{val_rand:02d}"
+        rand_rem = rnd.randint(0, 37)
+        if rand_rem == 0:
+            c_rand = "00"
+        elif rand_rem == 1:
+            c_rand = "0"
+        else:
+            c_rand = f"{rand_rem - 1:02d}"
+            
         if c_rand not in unique_candidates:
             unique_candidates.append(c_rand)
             
-    d1 = f"{unique_candidates[0]}-{unique_candidates[1]}-{unique_candidates[2]}"
-    d2 = f"{unique_candidates[3]}-{unique_candidates[4]}-{unique_candidates[5]}"
+    seis_numeros = unique_candidates[:6]
+    
+    d1 = f"{seis_numeros[0]}-{seis_numeros[1]}-{seis_numeros[2]}"
+    d2 = f"{seis_numeros[3]}-{seis_numeros[4]}-{seis_numeros[5]}"
     
     mensaje = (
         "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
