@@ -374,7 +374,7 @@ def enviar_saludo_matutino():
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
         "🌅 ¡Buenos días a todos! 🌅\n\n"
         "Ya arrancamos un nuevo día con la mejor energía. "
-        "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+        "Por hieres estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
         "📸 Instagram: https://www.instagram.com/agharold_jose (@agharold_jose)\n"
@@ -508,4 +508,4 @@ def verificar_resultados():
                             }
                             if item_dict not in nuevos_encontrados:
                                 nuevos_encontrados.append(item_dict)
-                               
+                             
