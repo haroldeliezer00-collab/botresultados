@@ -1,11 +1,10 @@
 import os
-# Forzar la zona horaria de Venezuela para que el bot use la hora local exacta
 os.environ['TZ'] = 'America/Caracas'
 try:
     import time
     time.tzset()
 except AttributeError:
-    pass # Compatible por si se prueba en Windows local
+    pass
 
 import requests
 from bs4 import BeautifulSoup
@@ -19,10 +18,8 @@ from datetime import datetime
 import random
 import telebot
 
-# Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Credenciales y canal
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL = '@pruebajsj'
 ENLACE_FIRMA_CANAL = 'https://t.me/pruebajsj'
@@ -64,7 +61,6 @@ TEXTO_TAQUILLA = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
-# BANNER CORPORATIVO PARA TABLAS DE RESULTADOS
 BANNER_AGENCIA = (
     "╔═══════ ⋆★⋆ ═══════╗\n"
     "  ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
@@ -74,7 +70,7 @@ BANNER_AGENCIA = (
     "        confianza y seguridad\n"
     "en cada rincón de Venezuela\n"
     "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ\n"
-    "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
+    "«La suerte es una flecha 🏹 lanzada que hace blanco 🎯 en el que menos la espera 🤑»\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363"
 )
@@ -188,13 +184,12 @@ def limpiar_memoria_diaria():
     ultimo_id_foto_canal = None
     print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
 
-# --- DETECTOR AUTOMÁTICO DE TAQUILLA Y TABLAS DE RESULTADOS DESDE EL CANAL ---
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
     if not imagen_activa_id:
         return
     taquilla_activa_hoy = True
-    print(f"¡Taquilla activada manualmente desde el canal!")
+    print("¡Taquilla activada manualmente desde el canal!")
     try:
         bot.send_photo(
             chat_id=CANAL,
@@ -221,15 +216,12 @@ def capturar_texto_canal(message):
     global imagen_activa_id, ultimo_id_foto_canal
     text = message.text if message.text else ""
     
-    # 1. Detección de apertura de taquilla
     if "taquilla activa" in text.lower():
         if ultimo_id_foto_canal:
             imagen_activa_id = ultimo_id_foto_canal
             activar_taquilla_proceso()
             
-    # 2. Detección automática de tablas de resultados enviadas al canal
     if "RESULTADOS ANIMALITOS" in text.upper():
-        # Evita bucles si el mensaje ya contiene el banner de la agencia
         if "HAROLD JOSE" not in text:
             enviar_mensaje_con_banner(text)
             print("📋 Tabla de resultados detectada en el canal y reenviada con el banner corporativo.")
@@ -422,15 +414,6 @@ def verificar_resultados():
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15, verify=False)
         
         if respuesta.status_code != 200:
-            print(f"⚠️ Winbig no disponible (Status {respuesta.status_code}). Buscando en fuentes oficiales de respaldo...")
-            for nombre_ofi, url_ofi in ENLACES_OFICIALES.items():
-                try:
-                    res_ofi = requests.get(url_ofi, headers=headers, timeout=10, verify=False)
-                    if res_ofi.status_code == 200:
-                        soup_ofi = BeautifulSoup(res_ofi.text, 'html.parser')
-                        procesar_soporte_html(soup_ofi, nombre_ofi, nuevos_encontrados=[])
-                except Exception as e_ofi:
-                    print(f"⚠️ Error en respaldo {nombre_ofi}: {e_ofi}")
             return
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
@@ -493,4 +476,28 @@ def verificar_resultados():
                         if clave not in resultados_enviados:
                             item_dict = {
                                 'tipo': 'triple',
-                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombr
+                                'loteria': "TRÍO ACTIVO" if "TRIO" in nombre_loteria or "TRÍO" in nombre_loteria else nombre_loteria,
+                                'hora': hora,
+                                'numero': num_triple,
+                                'terminal': terminal
+                            }
+                            if item_dict not in nuevos_encontrados:
+                                nuevos_encontrados.append(item_dict)
+                                resultados_enviados.add(clave)
+                else:
+                    match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                    if not match_res:
+                        continue
+
+                    resultado_final = limpiar_texto(match_res.group(1)).upper()
+                    clave = (nombre_loteria, hora, resultado_final)
+
+                    if primera_ejecucion:
+                        resultados_enviados.add(clave)
+                    else:
+                        if clave not in resultados_enviados:
+                            item_dict = {
+                                'tipo': 'animalito',
+                                'loteria': nombre_loteria,
+                                'hora': hora,
+                                'resultado': resultado_
