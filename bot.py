@@ -18,6 +18,7 @@ import urllib3
 from datetime import datetime
 import random
 import telebot
+import unicodedata
 
 # Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -43,6 +44,50 @@ ENLACES_OFICIALES = {
     "GUACA ACTIVA": "https://lotery.winbigvzla.com/resultados",
     "MEGA GUACA": "https://lotery.winbigvzla.com/resultados",
     "EL GUACHARITO MILLONARIO": "https://elguacharitomillonario.com/"
+}
+
+# --- FUNCIÓN PARA REMOVER ACENTOS Y NORMALIZAR TEXTO ---
+def normalizar_cadena(texto):
+    if not texto:
+        return ""
+    texto_norm = unicodedata.normalize('NFD', str(texto))
+    texto_sin_acentos = "".join(c for c in texto_norm if unicodedata.category(c) != 'Mn')
+    return texto_sin_acentos.upper().strip()
+
+# --- MAPA DE ALIAS PARA MAPEAR NOMBRES WEB A LA TABLA ---
+ALIAS_LOTERIA = {
+    "LA GRANJITA": "La Granjita",
+    "GRANJITA": "La Granjita",
+    "LOTTO ACTIVO": "Lotto Activo",
+    "SELVA PLUS": "Selva Plus",
+    "SELVA": "Selva Plus",
+    "GUACHARO ACTIVO": "Guácharo Activo",
+    "GUACHARO": "Guácharo Activo",
+    "EL GUACHARO": "Guácharo Activo",
+    "LOTO CHAIMA": "Loto Chaima",
+    "CHAIMA": "Loto Chaima",
+    "MONJE MILLONARIO": "Monje Millonario",
+    "MONJE": "Monje Millonario",
+    "EL MONJE": "Monje Millonario",
+    "LOTTO ANIMALITO": "Lotto Animalito",
+    "ANIMALITO": "Lotto Animalito",
+    "LOTTO PANTERA": "Lotto Pantera",
+    "PANTERA": "Lotto Pantera",
+    "LOTTO REAL": "Lotto Real",
+    "REAL": "Lotto Real",
+    "LOTTO RD": "Lotto Rd",
+    "LOTTO RD INTERNACIONAL": "Lotto Rd",
+    "CENTENA ANIMALITOS": "Centena Animalitos",
+    "MEGA ANIMAL": "Mega Animal",
+    "RULETON PERU": "Ruleton Perú",
+    "RULETON COLOMBIA": "Ruleton Colombia",
+    "RULETON VENEZUELA": "Ruleton Venezuela",
+    "CONDOR GANA": "Cóndor Gana",
+    "FRUTI GANA": "Fruti Gana",
+    "TROPI GANA": "Tropi Gana",
+    "GRANJA MILLONARIA": "Granja Millonaria",
+    "ZOOLOGICO ACTIVO": "Zoológico Activo",
+    "LOTTO MAX": "Lotto Max"
 }
 
 # --- DICCIONARIOS Y CONFIGURACIÓN PARA LA TABLA DE RESULTADOS ---
@@ -83,6 +128,18 @@ ABBR_MAP = {
     "PANDA PLUS": "P.PLUS"
 }
 
+def obtener_clave_estandar(nombre_raw):
+    norm = normalizar_cadena(nombre_raw)
+    if norm in ALIAS_LOTERIA:
+        return ALIAS_LOTERIA[norm]
+    for alias, key_std in ALIAS_LOTERIA.items():
+        if alias in norm or norm in alias:
+            return key_std
+    for lot_key in ABBR_MAP.keys():
+        if normalizar_cadena(lot_key) in norm or norm in normalizar_cadena(lot_key):
+            return lot_key
+    return nombre_raw
+
 ANIMAL_DATA = {
     "00": ("BALLENA", "🐳"), "0": ("DELFIN", "🐬"), "1": ("CARNERO", "🐏"), 
     "2": ("TORO", "🐂"), "3": ("CIEMPIES", "🐛"), "4": ("ALACRAN", "🦂"), 
@@ -92,7 +149,7 @@ ANIMAL_DATA = {
     "14": ("PALOMA", "🕊️"), "15": ("ZORRO", "🦊"), "16": ("OSO", "🐻"), 
     "17": ("PAVO", "🦃"), "18": ("BURRO", "🫏"), "19": ("CHIVO", "🐐"), 
     "20": ("COCHINO", "🐖"), "21": ("GALLO", "🐓"), "22": ("CAMELLO", "🐪"), 
-    "23": ("ZEBRA", "🦓"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
+    "23": ("ZEBRA", "ZE"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
     "26": ("VACA", "🐄"), "27": ("PERRO", "🐕"), "28": ("ZAMURO", "🦅"), 
     "29": ("ELEFANTE", "🐘"), "30": ("CAIMAN", "🐊"), "31": ("JIRAFA", "🦒"), 
     "32": ("CULEBRA", "🐍"), "33": ("PESCADO", "🐟"), "34": ("VENADO", "🦌"), 
@@ -115,7 +172,6 @@ HEADER_TEXT = (
     "------------------------"
 )
 
-# Variables de estado diario para la Taquilla
 taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
@@ -154,7 +210,6 @@ def home():
         "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla (Tarde)</a>"
     )
 
-# --- RUTAS DE PRUEBA MANUAL (TEST) ---
 @app.route('/test/madrugada')
 def test_madrugada():
     enviar_saludo_madrugada()
@@ -189,7 +244,7 @@ def test_resultados():
 def test_tabla():
     verificar_resultados()
     enviar_tabla_resultados()
-    return "¡Prueba ejecutada! Se envió la tabla de resultados al canal."
+    return "¡Prueba ejecutada! Se actualizó y envió la tabla de resultados al canal."
 
 @app.route('/test/cierre')
 def test_cierre():
@@ -200,7 +255,6 @@ def test_cierre():
 def test_refuerzo():
     tarea_refuerzo_tarde()
     return "Prueba de refuerzo ejecutada manualmente."
-# ------------------------------------
 
 resultados_enviados = set()
 primera_ejecucion = True
@@ -209,7 +263,6 @@ def limpiar_texto(texto):
     return " ".join(texto.split())
 
 def enviar_telegram(mensaje, disable_web_preview=True):
-    """Función centralizada para enviar mensajes al canal oficial."""
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     payload = {
         "chat_id": CANAL, 
@@ -234,7 +287,6 @@ def limpiar_memoria_diaria():
     ultimo_id_foto_canal = None
     print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
 
-# --- DETECTOR AUTOMÁTICO DE TAQUILLA ACTIVA DESDE EL CANAL ---
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
     if not imagen_activa_id:
@@ -273,9 +325,7 @@ def capturar_texto_canal(message):
 
 def tarea_refuerzo_tarde():
     global taquilla_activa_hoy, imagen_activa_id
-    
     if taquilla_activa_hoy and imagen_activa_id:
-        print("Ejecutando refuerzo de taquilla de las 3:30 p.m.")
         try:
             bot.send_photo(
                 chat_id=CANAL,
@@ -283,12 +333,8 @@ def tarea_refuerzo_tarde():
                 caption=TEXTO_TAQUILLA + "\n\n🔄 *¡Seguimos activos con la jornada de la tarde!*",
                 parse_mode="Markdown"
             )
-            print("Refuerzo de las 3:30 p.m. enviado correctamente.")
         except Exception as e:
             print(f"Error al enviar refuerzo de tarde: {e}")
-    else:
-        print("A las 3:30 p.m. la taquilla no había sido abierta hoy, se omite el refuerzo.")
-# -------------------------------------------------------------
 
 def enviar_saludo_madrugada():
     mensaje = (
@@ -297,7 +343,6 @@ def enviar_saludo_madrugada():
         "Comenzamos este nuevo día activos, enfocados y con los mejores datos para asegurar cada jugada. ¡Que la suerte esté de nuestro lado desde temprano! 🍀🔥"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
-    print("🌅 Saludo de madrugada enviado.")
 
 def generar_piramide():
     ahora = datetime.now()
@@ -361,7 +406,6 @@ def generar_piramide():
 def enviar_piramide_diaria():
     mensaje = generar_piramide()
     enviar_telegram(mensaje, disable_web_preview=True)
-    print("📐 Pirámide numérica enviada.")
 
 def enviar_tasa_dolar():
     try:
@@ -383,7 +427,6 @@ def enviar_tasa_dolar():
             "🔗 Fuente: Banco Central de Venezuela"
         )
         enviar_telegram(mensaje, disable_web_preview=True)
-        print("💵 Tasa BCV enviada.")
     except Exception as e:
         print(f"⚠️ Error en tasa BCV: {e}")
 
@@ -400,7 +443,6 @@ def enviar_saludo_matutino():
         "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
-    print("☀️ Saludo matutino enviado.")
 
 def enviar_aviso_taquilla():
     mensaje_promo = (
@@ -416,7 +458,6 @@ def enviar_aviso_taquilla():
         "¡Mucha suerte en sus jugadas! 🍀🔥"
     )
     enviar_telegram(mensaje_promo, disable_web_preview=True)
-    print("📢 Aviso de taquilla enviado.")
 
 def enviar_mensaje_cierre():
     mensaje = (
@@ -425,7 +466,6 @@ def enviar_mensaje_cierre():
         "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
     )
     enviar_telegram(mensaje, disable_web_preview=True)
-    print("🌙 Mensaje de cierre de jornada enviado.")
 
 def normalizar_hora_tabla(hora_str):
     hora_str = hora_str.upper().strip()
@@ -446,7 +486,6 @@ def normalizar_hora_tabla(hora_str):
     return None
 
 def formatear_hora_tabla(h_str):
-    """Convierte la hora de formato 24h a formato normal 12h (ej: 13:00 -> 01:00) para mostrar en la tabla."""
     try:
         h_part = int(h_str.split(":")[0])
         if h_part == 0:
@@ -459,6 +498,7 @@ def formatear_hora_tabla(h_str):
     except:
         return h_str
 
+# --- CONSTRUCCIÓN DE LA TABLA DE RESULTADOS CON ESPACIADO EXACTO ---
 def build_table_message():
     hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
@@ -472,27 +512,28 @@ def build_table_message():
         ["Granja Millonaria", "Zoológico Activo", "Lotto Max"]
     ]
 
-    # Espacio superior reducido (un solo salto de línea) para eliminar el vacío excesivo
     text = HEADER_TEXT + "\n"
 
     for group in groups:
-        header_line = "HORA 🏛️"
+        header_line = "HORA🏛️"
         for lot in group:
             abbr = ABBR_MAP.get(lot, lot[:5])
-            header_line += f" ⚪ {abbr}"
+            header_line += f"   ⚪{abbr}"
         text += header_line + "\n"
 
         for h in hours:
-            h_display = formatear_hora_tabla(h)
-            row_line = f"⏰ {h_display}"
+            h_display = formatear_hora_tabla(h) # "08:00"
+            row_line = f"⏰{h_display}" # Reloj pegado directamente a la hora
             for lot in group:
                 res = results_storage.get(h, {}).get(lot)
                 if res:
                     num = res['num']
                     emoji = res['info'][1]
-                    row_line += f" {num} {emoji}"
+                    # Número pegado al animalito, seguido de 3 espacios de separación
+                    row_line += f"   {num}{emoji}"
                 else:
-                    row_line += " .... 🚫"
+                    # Sin resultado, seguido de 3 espacios de separación
+                    row_line += "   ....🚫"
             text += row_line + "\n"
         text += "\n"
 
@@ -507,6 +548,7 @@ def enviar_tabla_resultados():
     except Exception as e:
         print(f"⚠️ Error al enviar tabla de resultados: {e}")
 
+# --- RASPADO WEB Y ACTUALIZACIÓN EN TIEMPO REAL ---
 def verificar_resultados():
     global resultados_enviados, primera_ejecucion, results_storage
     try:
@@ -549,6 +591,8 @@ def verificar_resultados():
                 continue
 
             nombre_loteria = limpiar_texto(nombre_loteria)
+            # Mapear nombre capturado a la clave estandarizada de la tabla (Soporta acentos)
+            matched_key_lot = obtener_clave_estandar(nombre_loteria)
 
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
             if not slots_sorteo:
@@ -567,13 +611,13 @@ def verificar_resultados():
                 if not hora_normalizada:
                     continue
 
-                match_res = re.search(r'(\d{1,2}\s-\s[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                match_res = re.search(r'(\d{1,2}\s*[-–—]\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
                 if not match_res:
                     continue
 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
                 
-                # Extraer número y buscar animalito para la tabla
+                # Extraer número y animalito para almacenar en results_storage
                 num_m = re.search(r'\b(00|0?[0-9]|[1-3][0-5]|36)\b', resultado_final)
                 if num_m:
                     num_val = num_m.group(1).zfill(2)
@@ -582,13 +626,7 @@ def verificar_resultados():
                     if hora_normalizada not in results_storage:
                         results_storage[hora_normalizada] = {}
                     
-                    # Buscar coincidencia aproximada con nombres del ABBR_MAP
-                    matched_key_lot = nombre_loteria
-                    for lot_key in ABBR_MAP.keys():
-                        if lot_key.upper() in nombre_loteria or nombre_loteria in lot_key.upper():
-                            matched_key_lot = lot_key
-                            break
-                    
+                    # Almacenar siempre en results_storage usando la clave estandarizada
                     results_storage[hora_normalizada][matched_key_lot] = {'num': num_val, 'info': animal_info}
 
                 clave = (nombre_loteria, hora_cruda, resultado_final)
@@ -622,31 +660,21 @@ def verificar_resultados():
 def loop_bot():
     verificar_resultados()
 
-    # Programación de tareas diarias (Hora de Venezuela)
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
     schedule.every().day.at("06:31").do(enviar_piramide_diaria)
     schedule.every().day.at("06:30").do(enviar_tasa_dolar)
     schedule.every().day.at("07:00").do(enviar_saludo_matutino)
     
-    # Avisos de taquilla automáticos
     schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
     
-    # Refuerzo automático de taquilla a las 3:30 p.m. (15:30)
     schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
-    
-    # Tasa BCV de la tarde (6:30 PM / 18:30)
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
-    
-    # Mensaje de cierre a las 09:10 PM (21:10)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
 
-    # Envío automático de la tabla de resultados exactamente al minuto 10 de cada hora
     schedule.every().hour.at(":10").do(enviar_tabla_resultados)
-
-    # Verificación continua de resultados cada minuto
     schedule.every(1).minute.do(verificar_resultados)
 
     while True:
@@ -654,12 +682,10 @@ def loop_bot():
         time.sleep(1)
 
 if __name__ == '__main__':
-    # Hilo para ejecutar las tareas programadas y web scraping de resultados
     t_schedule = Thread(target=loop_bot)
     t_schedule.daemon = True
     t_schedule.start()
 
-    # Hilo secundario para que el bot escuche los mensajes del canal en segundo plano
     t_bot = Thread(target=lambda: bot.infinity_polling(skip_pending=True))
     t_bot.daemon = True
     t_bot.start()
