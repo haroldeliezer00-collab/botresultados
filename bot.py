@@ -16,9 +16,9 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "¡El bot de resultados de la Agencia Harold José está activo y funcionando!"
+    return "¡El bot de resultados de la Agencia Harold José está activo y funcionando al 100%!"
 
-# Diccionario oficial de abreviaturas
+# Diccionario oficial de abreviaturas (Excluyendo Ruleta Royal)
 ABBR_MAP = {
     "Lotto Activo": "L.ACT",
     "La Granjita": "GRAJ",
@@ -56,11 +56,11 @@ ABBR_MAP = {
     "PANDA PLUS": "P.PLUS"
 }
 
-# Estructura en memoria
+# Estructura en memoria para la tabla acumulada
 results_storage = {}
 sent_individual_results = set()
 
-# Encabezado corporativo oficial
+# Encabezado corporativo oficial para la tabla
 HEADER_TEXT = (
     "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
     "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n"
@@ -75,65 +75,174 @@ HEADER_TEXT = (
     "------------------------"
 )
 
-def scrape_results(send_telegram_alerts=False):
-    """Entra a winbigvzla.com, extrae los resultados y los organiza en memoria."""
-    try:
-        url = "https://winbigvzla.com/"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code != 200:
-            return False
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Búsqueda y extracción en la página
-        import re
-        for tag in soup.find_all(['h3', 'h4', 'strong', 'div', 'span']):
-            t = tag.get_text(strip=True)
-            for lot in ABBR_MAP.keys():
-                if lot.lower() in t.lower():
-                    parent_text = tag.parent.get_text(separator=' ', strip=True) if tag.parent else t
-                    time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', parent_text, re.IGNORECASE)
-                    num_m = re.search(r'\b(0?[0-9]|[1-3][0-5]|36)\b', parent_text)
-                    
-                    if time_m and num_m:
-                        h_raw = time_m.group(1)
-                        ampm = time_m.group(2) if time_m.group(2) else ""
-                        h_formatted = f"{h_raw} {ampm}".strip().upper()
-                        
-                        hour_key = h_raw if ":" in h_raw else "09:00"
-                        if len(hour_key) == 4:
-                            hour_key = "0" + hour_key
-                            
-                        num = num_m.group(1).zfill(2)
-                        
-                        parts = parent_text.split(num)
-                        animal = "ANIMAL"
-                        if len(parts) > 1:
-                            words = parts[1].strip().split()
-                            if words:
-                                animal = words[0].upper()
+# ==========================================
+# GENERADORES DE MENSAJES AUTOMÁTICOS
+# ==========================================
 
-                        if hour_key not in results_storage:
-                            results_storage[hour_key] = {}
+def get_morning_greeting_text():
+    return (
+        "🎯 AGENCIA HAROLD JOSÉ 🎯\n\n"
+        "🌅 ¡Despierta con la mejor actitud y energía positiva! 🌟\n"
+        "Que este nuevo día esté lleno de bendiciones, grandes jugadas y mucha prosperidad para todos. ¡Vamos con todo! 💪🍀"
+    )
+
+def generate_pyramid_text():
+    now = datetime.now()
+    date_str = now.strftime("%d/%m/%Y")
+    digits = [int(c) for c in now.strftime("%d%m%Y")]
+    
+    rows = [digits]
+    while len(rows[-1]) > 1:
+        prev = rows[-1]
+        curr = [(prev[i] + prev[i+1]) % 10 for i in range(len(prev)-1)]
+        rows.append(curr)
+    
+    pyramid_str = ""
+    for idx, r in enumerate(rows):
+        padding = "  " * idx
+        row_nums = "   ".join(map(str, r))
+        pyramid_str += f"{padding}... {row_nums} ...\n"
+        
+    return (
+        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
+        "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
+        f"📅 Fecha: {date_str}\n"
+        "Análisis matemático actualizado y listo para la jugada. ¡A asegurar posición:\n\n"
+        f"{pyramid_str}\n"
+        "🔥 DATOS CLAVES PARA HOY:\n"
+        "📌 25-13-07\n"
+        "📌 35-20-02\n\n"
+        "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza y gana con nosotros! 🍀 💰"
+    )
+
+def get_7am_text():
+    return (
+        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
+        "🌅 ¡Buenos días a todos! 🌅\n\n"
+        "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+        "📢 Nuestros canales oficiales:\n"
+        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
+        "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
+        "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
+    )
+
+def get_bcv_text():
+    rate = "742,23"
+    try:
+        res = requests.get("https://www.bcv.org.ve/", headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+        if res.status_code == 200:
+            soup = BeautifulSoup(res.text, 'html.parser')
+            div = soup.find('div', id='field-dolar')
+            if div:
+                val = div.get_text(strip=True)
+                if val:
+                    rate = val
+    except:
+        pass
+    return (
+        "💵 TASA OFICIAL BCV 💵\n\n"
+        "🏦 Moneda: Dólar Estadounidense\n"
+        f"📈 Precio Oficial: Bs. {rate}\n\n"
+        "🔗 Fuente: Banco Central de Venezuela\n"
+        "La página para verificar el precio oficial del dólar es esta https://www.bcv.org.ve/"
+    )
+
+def get_announcement_text():
+    return (
+        "🎯 AGENCIA HAROLD JOSE 🎯\n"
+        "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
+        "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
+        "Recuerda que para jugar con nosotros debes acceder primero al Canal de WhatsApp para verificar si la taquilla se encuentra activa el día de hoy:\n"
+        "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
+        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
+        "💬 También estamos disponibles por Telegram:\n"
+        "👉 t.me/ag_haroldjose\n\n"
+        "¡Mucha suerte en sus jugadas! 🍀🔥"
+    )
+
+def get_final_text():
+    return (
+        "🎯 AGENCIA HAROLD JOSE 2 🎯\n\n"
+        "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
+        "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
+    )
+
+def format_individual_message(loteria, hora, num, animal):
+    return (
+        "🎯 AG HAROLD JOSE 🎯\n\n"
+        f"🎰 {loteria.upper()}\n"
+        f"🕒 {hora}  {num} - {animal.upper()}\n"
+        "https://t.me/resultadosagharoldjose"
+    )
+
+# ==========================================
+# SCRAPER DE RESULTADOS (PRINCIPAL Y OFICIALES)
+# ==========================================
+def scrape_and_notify(send_alerts=False):
+    sources = [
+        "https://lotery.winbigvzla.com/resultados",
+        "https://www.lottoactivo.com/resultados/lotto_activo/",
+        "https://lagranjitaonline.com/",
+        "https://www.selvaplus.com/resultados",
+        "https://elguacharitomillonario.com/",
+        "https://lotochaima.com/",
+        "https://www.guacharoactivo.com.ve/resultados",
+        "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
+        "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
+        "https://www.guacaactiva.com/"
+    ]
+    
+    import re
+    for url in sources:
+        try:
+            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
+            if resp.status_code != 200:
+                continue
+            soup = BeautifulSoup(resp.text, 'html.parser')
+            
+            for tag in soup.find_all(['h3', 'h4', 'strong', 'div', 'span', 'li']):
+                t = tag.get_text(strip=True)
+                if "ruleta royal" in t.lower():
+                    continue # Excluir Ruleta Royal explícitamente
+                
+                for lot in ABBR_MAP.keys():
+                    if lot.lower() in t.lower():
+                        parent_text = tag.parent.get_text(separator=' ', strip=True) if tag.parent else t
+                        time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', parent_text, re.IGNORECASE)
+                        num_m = re.search(r'\b(0?[0-9]|[1-3][0-5]|36)\b', parent_text)
                         
-                        results_storage[hour_key][lot] = {"num": num, "animal": animal}
-                        
-                        clave_unica = f"{hour_key}-{lot}-{num}"
-                        if send_telegram_alerts and clave_unica not in sent_individual_results:
-                            sent_individual_results.add(clave_unica)
-                            msg_ind = (
-                                f"AG HAROLD JOSE RESULTADOS\n"
-                                f"AGENCIA HAROLD JOSE - RESULTADOS\n\n"
-                                f"🏛️ {lot.upper()} ({h_formatted})\n"
-                                f"Resultado: {num} - {animal}\n\n"
-                                f"Enlace: {CHANNEL_ID}"
-                            )
-                            bot.send_message(CHANNEL_ID, msg_ind)
-        return True
-    except Exception as e:
-        print(f"Error en scraping: {e}")
-        return False
+                        if time_m and num_m:
+                            h_raw = time_m.group(1)
+                            ampm = time_m.group(2) if time_m.group(2) else ""
+                            h_formatted = f"{h_raw} {ampm}".strip().upper()
+                            
+                            hour_key = h_raw if ":" in h_raw else "09:00"
+                            if len(hour_key) == 4:
+                                hour_key = "0" + hour_key
+                                
+                            num = num_m.group(1).zfill(2)
+                            
+                            parts = parent_text.split(num)
+                            animal = "ANIMAL"
+                            if len(parts) > 1:
+                                words = parts[1].strip().split()
+                                if words:
+                                    animal = words[0].upper()
+
+                            if hour_key not in results_storage:
+                                results_storage[hour_key] = {}
+                            
+                            results_storage[hour_key][lot] = {"num": num, "animal": animal}
+                            
+                            key_unique = f"{hour_key}-{lot}-{num}"
+                            if send_alerts and key_unique not in sent_individual_results:
+                                sent_individual_results.add(key_unique)
+                                msg = format_individual_message(lot, h_formatted, num, animal)
+                                bot.send_message(CHANNEL_ID, msg)
+        except Exception as e:
+            print(f"Error escrapeando {url}: {e}")
 
 def build_table_message():
     hours = sorted(list(results_storage.keys()))
@@ -174,27 +283,99 @@ def build_table_message():
     return text
 
 # ==========================================
-# COMANDO DE PRUEBA INSTANTÁNEA EN TELEGRAM
+# COMANDOS DE TEST INDIVIDUALES EN TELEGRAM
 # ==========================================
-@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() in ['probar', 'test', 'actualizar'])
-def cmd_probar(message):
-    bot.reply_to(message, "🔄 Extrayendo resultados de la web y generando la tabla...")
-    scrape_results(send_telegram_alerts=False)
-    tabla_generada = build_table_message()
-    bot.send_message(message.chat.id, tabla_generada)
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_buenos_dias')
+def test_bd(message):
+    bot.send_message(message.chat.id, get_morning_greeting_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_piramide')
+def test_pir(message):
+    bot.send_message(message.chat.id, generate_pyramid_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_7am')
+def test_7(message):
+    bot.send_message(message.chat.id, get_7am_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_bcv')
+def test_b(message):
+    bot.send_message(message.chat.id, get_bcv_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_anuncio')
+def test_an(message):
+    bot.send_message(message.chat.id, get_announcement_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_tabla')
+def test_tab(message):
+    scrape_and_notify(send_alerts=False)
+    bot.send_message(message.chat.id, build_table_message())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_scraping')
+def test_scr(message):
+    bot.reply_to(message, "🔄 Ejecutando revisión en páginas oficiales...")
+    scrape_and_notify(send_alerts=True)
+    bot.reply_to(message, "✅ ¡Scraping de prueba finalizado!")
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'test_final')
+def test_fin(message):
+    bot.send_message(message.chat.id, get_final_text())
+
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() in ['probar', 'test'])
+def test_general(message):
+    bot.reply_to(message, "🛠️ Comandos de test disponibles:\n- test_buenos_dias\n- test_piramide\n- test_7am\n- test_bcv\n- test_anuncio\n- test_tabla\n- test_scraping\n- test_final")
 
 # ==========================================
-# AUTOMATIZACIÓN POR HORARIOS (MINUTO 10)
+# PLANIFICADOR AUTOMÁTICO POR HORARIOS
 # ==========================================
 def background_scheduler():
+    last_min = -1
     while True:
         now = datetime.now()
-        if now.minute == 10:
-            scrape_results(send_telegram_alerts=True)
-            tabla_auto = build_table_message()
-            bot.send_message(CHANNEL_ID, tabla_auto)
-            time.sleep(65)
-        time.sleep(15)
+        current_hour = now.hour
+        current_min = now.minute
+        current_w_time = now.strftime("%H:%M")
+        
+        if current_min != last_min:
+            last_min = current_min
+            
+            # 6:30 AM - Buenos días
+            if current_w_time == "06:30":
+                bot.send_message(CHANNEL_ID, get_morning_greeting_text())
+                
+            # 6:31 AM - Pirámide
+            elif current_w_time == "06:31":
+                bot.send_message(CHANNEL_ID, generate_pyramid_text())
+                
+            # 7:00 AM - Mensaje 7am
+            elif current_w_time == "07:00":
+                bot.send_message(CHANNEL_ID, get_7am_text())
+                
+            # 6:30 AM y 6:30 PM - Tasa BCV (18:30)
+            elif current_w_time in ["06:30", "18:30"] and current_min == 30:
+                # Evita duplicar a las 6:30 AM con el de buenos días o maneja separado
+                pass
+            
+            # 6:30 AM / 6:30 PM BCV específico
+            if (current_hour == 6 and current_min == 30) or (current_hour == 18 and current_min == 30):
+                bot.send_message(CHANNEL_ID, get_bcv_text())
+
+            # 10:00 AM, 2:00 PM (14:00), 5:00 PM (17:00) - Anuncios importantes
+            elif current_w_time in ["10:00", "14:00", "17:00"]:
+                bot.send_message(CHANNEL_ID, get_announcement_text())
+                
+            # Minuto 10 de cada hora - Tabla acumulada
+            elif current_min == 10:
+                scrape_and_notify(send_alerts=True)
+                bot.send_message(CHANNEL_ID, build_table_message())
+                time.sleep(65)
+                
+            # 9:10 PM (21:10) - Cierre de jornada
+            elif current_w_time == "21:10":
+                bot.send_message(CHANNEL_ID, get_final_text())
+
+        # Revisión continua de resultados cada 2 minutos en segundo plano
+        scrape_and_notify(send_alerts=True)
+        time.sleep(45)
 
 def run_flask():
     port = int(os.environ.get("PORT", 5000))
@@ -203,5 +384,5 @@ def run_flask():
 if __name__ == '__main__':
     threading.Thread(target=run_flask, daemon=True).start()
     threading.Thread(target=background_scheduler, daemon=True).start()
-    print("🤖 Bot y servidor web iniciados correctamente...")
+    print("🤖 Bot completo de la Agencia Harold José iniciado correctamente...")
     bot.infinity_polling()
