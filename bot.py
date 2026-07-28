@@ -107,7 +107,7 @@ HEADER_TEXT = (
     "      Mas de 6 años brindando\n"
     "          confianza y seguridad\n"
     "  en cada rincón de Venezuela\n"
-    "       ʀᴇꜱᴜʟᴛ𝙰ᴅᴏꜱ ᴏꜰ𝙸ᴄ𝙸ᴀʟᴇꜱ\n"
+    "       ʀᴇꜱ𝚄𝙻𝚃𝙰ᴅᴏꜱ ᴏꜰ𝙸ᴄ𝙸ᴀʟᴇꜱ\n"
     "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363\n\n"
@@ -445,6 +445,20 @@ def normalizar_hora_tabla(hora_str):
         return f"{h:02d}:00"
     return None
 
+def formatear_hora_tabla(h_str):
+    """Convierte la hora de formato 24h a formato normal 12h (ej: 13:00 -> 01:00) para mostrar en la tabla."""
+    try:
+        h_part = int(h_str.split(":")[0])
+        if h_part == 0:
+            h_12 = 12
+        elif h_part > 12:
+            h_12 = h_part - 12
+        else:
+            h_12 = h_part
+        return f"{h_12:02d}:00"
+    except:
+        return h_str
+
 def build_table_message():
     hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
@@ -458,7 +472,8 @@ def build_table_message():
         ["Granja Millonaria", "Zoológico Activo", "Lotto Max"]
     ]
 
-    text = HEADER_TEXT + "\n\n"
+    # Espacio superior reducido (un solo salto de línea) para eliminar el vacío excesivo
+    text = HEADER_TEXT + "\n"
 
     for group in groups:
         header_line = "HORA 🏛️"
@@ -468,7 +483,8 @@ def build_table_message():
         text += header_line + "\n"
 
         for h in hours:
-            row_line = f"⏰ {h}"
+            h_display = formatear_hora_tabla(h)
+            row_line = f"⏰ {h_display}"
             for lot in group:
                 res = results_storage.get(h, {}).get(lot)
                 if res:
