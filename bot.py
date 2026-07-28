@@ -1,15 +1,22 @@
+import os
 import time
 import threading
 import requests
 from bs4 import BeautifulSoup
 import telebot
 from datetime import datetime
+from flask import Flask
 
 # Configuración con tu token y tu canal oficial de Telegram
 TOKEN = "8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk"
 CHANNEL_ID = "@pruebajsj"
 
 bot = telebot.TeleBot(TOKEN)
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "¡El bot de resultados de la Agencia Harold José está activo y funcionando!"
 
 # Diccionario oficial de abreviaturas definido por ti
 ABBR_MAP = {
@@ -56,12 +63,12 @@ sent_individual_results = set()
 # Encabezado corporativo oficial
 HEADER_TEXT = (
     "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
-    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n"
+    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n"
     "      Mas de 6 años brindando\n"
     "          confianza y seguridad\n"
     "  en cada rincón de Venezuela\n"
     "       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ\n"
-    "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝙲𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
+    "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363\n\n"
     "📊 𝗥𝙴𝚂𝚄𝙻𝚃𝙰𝙳𝙾𝚂 𝙰𝙽𝙸𝙼𝙰𝙻𝙸𝚃𝙾𝚂 📊\n"
@@ -150,7 +157,16 @@ def background_scheduler():
             time.sleep(65)
         time.sleep(15)
 
+def run_flask():
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
 if __name__ == '__main__':
+    # Inicia el hilo del servidor web para que Render detecte vida y complete el Deploy
+    threading.Thread(target=run_flask, daemon=True).start()
+    
+    # Inicia el hilo de verificación automática en segundo plano
     threading.Thread(target=background_scheduler, daemon=True).start()
-    print("Bot iniciado correctamente y escuchando comandos...")
+    
+    print("🤖 Bot y servidor web iniciados correctamente...")
     bot.infinity_polling()
