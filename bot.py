@@ -56,11 +56,11 @@ ABBR_MAP = {
     "PANDA PLUS": "P.PLUS"
 }
 
-# Estructura para almacenar en memoria: results_storage[hora][nombre_loteria] = {"num": "20", "animal": "🐷"}
+# Estructura en memoria: results_storage[hora][nombre_loteria] = {"num": "20", "animal": "🐷"}
 results_storage = {}
 sent_individual_results = set()
 
-# Encabezado corporativo oficial
+# Encabezado corporativo oficial para la tabla
 HEADER_TEXT = (
     "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
     "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n"
@@ -76,7 +76,7 @@ HEADER_TEXT = (
 )
 
 def scrape_results():
-    """Función encargada de revisar la página web, extraer resultados y enviar alertas individuales."""
+    """Revisa la página web, extrae resultados y envía CADA UNO en un mensaje individual único."""
     try:
         url = "https://winbigvzla.com/"
         headers = {'User-Agent': 'Mozilla/5.0'}
@@ -85,15 +85,40 @@ def scrape_results():
             return
         
         soup = BeautifulSoup(response.text, 'html.parser')
-        # Lógica de scraping personalizada para capturar y poblar results_storage
+        
+        # --- AQUÍ PROCESAS CADA RESULTADO INDIVIDUALMENTE ---
+        # Ejemplo de estructura lógica por cada resultado detectado en la web:
+        # hora_str = "08:00"
+        # loteria_nombre = "La Granjita"
+        # num = "20"
+        # animal = "🐷"
+        # 
+        # clave_unica = f"{hora_str}-{loteria_nombre}-{num}"
+        # if clave_unica not in sent_individual_results:
+        #     # Guardar en memoria para la tabla
+        #     if hora_str not in results_storage:
+        #         results_storage[hora_str] = {}
+        #     results_storage[hora_str][loteria_nombre] = {"num": num, "animal": animal}
+        #     sent_individual_results.add(clave_unica)
+        #     
+        #     # Enviar MENSAJE INDIVIDUAL exclusivo para este resultado
+        #     msg_individual = (
+        #         f"AG HAROLD JOSE RESULTADOS\n"
+        #         f"AGENCIA HAROLD JOSE - RESULTADOS\n\n"
+        #         f"🏛️ {loteria_nombre.upper()} ({hora_str})\n"
+        #         f"Resultado: {num} - {animal}\n\n"
+        #         f"Enlace: {CHANNEL_ID}"
+        #     )
+        #     bot.send_message(CHANNEL_ID, msg_individual)
         
     except Exception as e:
         print(f"Error en scraping: {e}")
 
 def build_table_message():
-    """Construye la tabla acumulada organizada en bloques de 3 columnas tal como la solicitaste."""
+    """Construye la tabla acumulada organizada en bloques de 3 columnas."""
     hours = sorted(list(results_storage.keys()))
     if not hours:
+        # Horas de prueba por defecto si la memoria está vacía
         hours = ["08:00", "09:00"]
 
     groups = [
@@ -130,18 +155,18 @@ def build_table_message():
     return text
 
 # ==========================================
-# COMANDOS DE PRUEBA MANUAL
+# COMANDOS DE PRUEBA MANUAL (ENVIAR AL BOT)
 # ==========================================
 
-@bot.message_handler(func=lambda message: message.text and message.text.lower() == 'actualizar')
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'actualizar')
 def cmd_actualizar(message):
-    bot.reply_to(message, "🔄 Forzando revisión de la página web...")
+    bot.reply_to(message, "🔄 Forzando revisión y reencuentro de resultados desde la web...")
     scrape_results()
     bot.reply_to(message, "✅ ¡Revisión completada y datos guardados en memoria!")
 
-@bot.message_handler(func=lambda message: message.text and message.text.lower() == 'tabla')
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'tabla')
 def cmd_tabla(message):
-    bot.reply_to(message, "📊 Generando tabla acumulada para prueba inmediata...")
+    bot.reply_to(message, "📊 Generando tabla acumulada con todos los resultados registrados...")
     tabla_generada = build_table_message()
     bot.send_message(message.chat.id, tabla_generada)
 
@@ -162,11 +187,7 @@ def run_flask():
     app.run(host="0.0.0.0", port=port)
 
 if __name__ == '__main__':
-    # Inicia el hilo del servidor web para que Render detecte vida y complete el Deploy
     threading.Thread(target=run_flask, daemon=True).start()
-    
-    # Inicia el hilo de verificación automática en segundo plano
     threading.Thread(target=background_scheduler, daemon=True).start()
-    
     print("🤖 Bot y servidor web iniciados correctamente...")
     bot.infinity_polling()
