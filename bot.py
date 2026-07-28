@@ -18,7 +18,7 @@ app = Flask('')
 def home():
     return "¡El bot de resultados de la Agencia Harold José está activo y funcionando!"
 
-# Diccionario oficial de abreviaturas definido por ti
+# Diccionario oficial de abreviaturas
 ABBR_MAP = {
     "Lotto Activo": "L.ACT",
     "La Granjita": "GRAJ",
@@ -56,11 +56,11 @@ ABBR_MAP = {
     "PANDA PLUS": "P.PLUS"
 }
 
-# Estructura en memoria: results_storage[hora][nombre_loteria] = {"num": "20", "animal": "🐷"}
+# Estructura en memoria
 results_storage = {}
 sent_individual_results = set()
 
-# Encabezado corporativo oficial para la tabla
+# Encabezado corporativo oficial
 HEADER_TEXT = (
     "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
     "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n"
@@ -75,51 +75,70 @@ HEADER_TEXT = (
     "------------------------"
 )
 
-def scrape_results():
-    """Revisa la página web, extrae resultados y envía CADA UNO en un mensaje individual único."""
+def scrape_results(send_telegram_alerts=False):
+    """Entra a winbigvzla.com, extrae los resultados y los organiza en memoria."""
     try:
         url = "https://winbigvzla.com/"
-        headers = {'User-Agent': 'Mozilla/5.0'}
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
-            return
+            return False
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # --- AQUÍ PROCESAS CADA RESULTADO INDIVIDUALMENTE ---
-        # Ejemplo de estructura lógica por cada resultado detectado en la web:
-        # hora_str = "08:00"
-        # loteria_nombre = "La Granjita"
-        # num = "20"
-        # animal = "🐷"
-        # 
-        # clave_unica = f"{hora_str}-{loteria_nombre}-{num}"
-        # if clave_unica not in sent_individual_results:
-        #     # Guardar en memoria para la tabla
-        #     if hora_str not in results_storage:
-        #         results_storage[hora_str] = {}
-        #     results_storage[hora_str][loteria_nombre] = {"num": num, "animal": animal}
-        #     sent_individual_results.add(clave_unica)
-        #     
-        #     # Enviar MENSAJE INDIVIDUAL exclusivo para este resultado
-        #     msg_individual = (
-        #         f"AG HAROLD JOSE RESULTADOS\n"
-        #         f"AGENCIA HAROLD JOSE - RESULTADOS\n\n"
-        #         f"🏛️ {loteria_nombre.upper()} ({hora_str})\n"
-        #         f"Resultado: {num} - {animal}\n\n"
-        #         f"Enlace: {CHANNEL_ID}"
-        #     )
-        #     bot.send_message(CHANNEL_ID, msg_individual)
-        
+        # Búsqueda y extracción en la página
+        import re
+        for tag in soup.find_all(['h3', 'h4', 'strong', 'div', 'span']):
+            t = tag.get_text(strip=True)
+            for lot in ABBR_MAP.keys():
+                if lot.lower() in t.lower():
+                    parent_text = tag.parent.get_text(separator=' ', strip=True) if tag.parent else t
+                    time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', parent_text, re.IGNORECASE)
+                    num_m = re.search(r'\b(0?[0-9]|[1-3][0-5]|36)\b', parent_text)
+                    
+                    if time_m and num_m:
+                        h_raw = time_m.group(1)
+                        ampm = time_m.group(2) if time_m.group(2) else ""
+                        h_formatted = f"{h_raw} {ampm}".strip().upper()
+                        
+                        hour_key = h_raw if ":" in h_raw else "09:00"
+                        if len(hour_key) == 4:
+                            hour_key = "0" + hour_key
+                            
+                        num = num_m.group(1).zfill(2)
+                        
+                        parts = parent_text.split(num)
+                        animal = "ANIMAL"
+                        if len(parts) > 1:
+                            words = parts[1].strip().split()
+                            if words:
+                                animal = words[0].upper()
+
+                        if hour_key not in results_storage:
+                            results_storage[hour_key] = {}
+                        
+                        results_storage[hour_key][lot] = {"num": num, "animal": animal}
+                        
+                        clave_unica = f"{hour_key}-{lot}-{num}"
+                        if send_telegram_alerts and clave_unica not in sent_individual_results:
+                            sent_individual_results.add(clave_unica)
+                            msg_ind = (
+                                f"AG HAROLD JOSE RESULTADOS\n"
+                                f"AGENCIA HAROLD JOSE - RESULTADOS\n\n"
+                                f"🏛️ {lot.upper()} ({h_formatted})\n"
+                                f"Resultado: {num} - {animal}\n\n"
+                                f"Enlace: {CHANNEL_ID}"
+                            )
+                            bot.send_message(CHANNEL_ID, msg_ind)
+        return True
     except Exception as e:
         print(f"Error en scraping: {e}")
+        return False
 
 def build_table_message():
-    """Construye la tabla acumulada organizada en bloques de 3 columnas."""
     hours = sorted(list(results_storage.keys()))
     if not hours:
-        # Horas de prueba por defecto si la memoria está vacía
-        hours = ["08:00", "09:00"]
+        hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00"]
 
     groups = [
         ["La Granjita", "Lotto Activo", "Selva Plus"],
@@ -155,18 +174,12 @@ def build_table_message():
     return text
 
 # ==========================================
-# COMANDOS DE PRUEBA MANUAL (ENVIAR AL BOT)
+# COMANDO DE PRUEBA INSTANTÁNEA EN TELEGRAM
 # ==========================================
-
-@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'actualizar')
-def cmd_actualizar(message):
-    bot.reply_to(message, "🔄 Forzando revisión y reencuentro de resultados desde la web...")
-    scrape_results()
-    bot.reply_to(message, "✅ ¡Revisión completada y datos guardados en memoria!")
-
-@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() == 'tabla')
-def cmd_tabla(message):
-    bot.reply_to(message, "📊 Generando tabla acumulada con todos los resultados registrados...")
+@bot.message_handler(func=lambda message: message.text and message.text.lower().strip() in ['probar', 'test', 'actualizar'])
+def cmd_probar(message):
+    bot.reply_to(message, "🔄 Extrayendo resultados de la web y generando la tabla...")
+    scrape_results(send_telegram_alerts=False)
     tabla_generada = build_table_message()
     bot.send_message(message.chat.id, tabla_generada)
 
@@ -177,6 +190,7 @@ def background_scheduler():
     while True:
         now = datetime.now()
         if now.minute == 10:
+            scrape_results(send_telegram_alerts=True)
             tabla_auto = build_table_message()
             bot.send_message(CHANNEL_ID, tabla_auto)
             time.sleep(65)
