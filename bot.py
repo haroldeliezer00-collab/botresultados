@@ -57,20 +57,26 @@ ABBR_MAP = {
     "PANDA PLUS": "P.PLUS"
 }
 
-# Diccionario Oficial de Animalitos (00 al 36)
-ANIMAL_MAP = {
-    "00": "BALLENA", "0": "DELFIN", "1": "CARNERO", "2": "TORO", "3": "CIEMPIES",
-    "4": "ALACRAN", "5": "LEON", "6": "RATON", "7": "CANARIO", "8": "TIBURON",
-    "9": "AGUILA", "10": "TIGRE", "11": "GATO", "12": "CABALLO", "13": "MONO",
-    "14": "PALOMA", "15": "ZORRO", "16": "OSO", "17": "PAVO", "18": "BURRO",
-    "19": "CHIVO", "20": "COCHINO", "21": "GALLO", "22": "CAMELLO", "23": "ZEBRA",
-    "24": "IGUANA", "25": "GALLINA", "26": "VACA", "27": "PERRO", "28": "ZAMURO",
-    "29": "ELEFANTE", "30": "CAIMAN", "31": "JIRAFA", "32": "CULEBRA", "33": "PESCADO",
-    "34": "VENADO", "35": "JIBARO", "36": "CULEBRA"
+# Diccionario Oficial de Animalitos con sus Emojis
+ANIMAL_DATA = {
+    "00": ("BALLENA", "🐳"), "0": ("DELFIN", "🐬"), "1": ("CARNERO", "🐏"), 
+    "2": ("TORO", "🐂"), "3": ("CIEMPIES", "🐛"), "4": ("ALACRAN", "🦂"), 
+    "5": ("LEON", "🦁"), "6": ("RATON", "🐭"), "7": ("CANARIO", "🐦"), 
+    "8": ("TIBURON", "🦈"), "9": ("AGUILA", "🦅"), "10": ("TIGRE", "🐅"), 
+    "11": ("GATO", "🐈"), "12": ("CABALLO", "🐎"), "13": ("MONO", "🐒"), 
+    "14": ("PALOMA", "🕊️"), "15": ("ZORRO", "🦊"), "16": ("OSO", "🐻"), 
+    "17": ("PAVO", "🦃"), "18": ("BURRO", "🫏"), "19": ("CHIVO", "🐐"), 
+    "20": ("COCHINO", "🐖"), "21": ("GALLO", "🐓"), "22": ("CAMELLO", "🐪"), 
+    "23": ("ZEBRA", "🦓"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
+    "26": ("VACA", "🐄"), "27": ("PERRO", "🐕"), "28": ("ZAMURO", "🦅"), 
+    "29": ("ELEFANTE", "🐘"), "30": ("CAIMAN", "🐊"), "31": ("JIRAFA", "🦒"), 
+    "32": ("CULEBRA", "🐍"), "33": ("PESCADO", "🐟"), "34": ("VENADO", "🦌"), 
+    "35": ("JIBARO", "🐗"), "36": ("CULEBRA", "🐍")
 }
 
 results_storage = {}
 sent_individual_results = set()
+initial_load_done = False
 
 HEADER_TEXT = (
     "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
@@ -78,7 +84,7 @@ HEADER_TEXT = (
     "      Mas de 6 años brindando\n"
     "          confianza y seguridad\n"
     "  en cada rincón de Venezuela\n"
-    "       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰ𝙸ᴄ𝙸ᴀʟᴇꜱ\n"
+    "       ʀᴇꜱᴜʟᴛ𝙰ᴅᴏꜱ ᴏꜰ𝙸ᴄ𝙸ᴀʟᴇꜱ\n"
     "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363\n\n"
@@ -176,15 +182,17 @@ def get_final_text():
         "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
     )
 
-def format_individual_message(loteria, hora, num, animal):
+def format_individual_message(loteria, hora, num, animal_info):
+    name, emoji = animal_info
     return (
         "🎯 AG HAROLD JOSE 🎯\n\n"
         f"🎰 {loteria.upper()}\n"
-        f"🕒 {hora}  {num} - {animal.upper()}\n"
+        f"🕒 {hora}  {num} {emoji} - {name}\n"
         "https://t.me/resultadosagharoldjose"
     )
 
 def scrape_and_notify(send_alerts=True):
+    global initial_load_done
     sources = [
         "https://lotery.winbigvzla.com/resultados",
         "https://www.lottoactivo.com/resultados/lotto_activo/",
@@ -214,40 +222,46 @@ def scrape_and_notify(send_alerts=True):
                 
                 for lot in ABBR_MAP.keys():
                     if lot.lower() in t.lower():
-                        time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', t, re.IGNORECASE)
+                        time_m = re.search(r'(\d{1,2}):?(\d{2})?\s*(AM|PM)?', t, re.IGNORECASE)
                         num_m = re.search(r'\b(00|0?[0-9]|[1-3][0-5]|36)\b', t)
                         
                         if time_m and num_m:
-                            h_raw = time_m.group(1)
-                            ampm = time_m.group(2) if time_m.group(2) else ""
-                            h_formatted = f"{h_raw} {ampm}".strip().upper()
+                            h_raw = time_m.group(1).zfill(2)
+                            hour_key = f"{h_raw}:00"
                             
-                            hour_key = h_raw if ":" in h_raw else "09:00"
-                            if len(hour_key) == 4:
-                                hour_key = "0" + hour_key
+                            # Normalizar a formato de horas en punto válidas (08:00 a 19:00)
+                            if hour_key not in [f"{str(i).zfill(2)}:00" for i in range(8, 20)]:
+                                continue
                                 
                             num = num_m.group(1).zfill(2)
-                            animal = ANIMAL_MAP.get(str(int(num)), ANIMAL_MAP.get(num, "ANIMAL"))
+                            animal_info = ANIMAL_DATA.get(str(int(num)), ANIMAL_DATA.get(num, ("ANIMAL", "🎲")))
 
                             if hour_key not in results_storage:
                                 results_storage[hour_key] = {}
                             
-                            # Actualiza o guarda si es nuevo resultado para esa hora y lotería
-                            if lot not in results_storage[hour_key] or results_storage[hour_key][lot]["num"] != num:
-                                results_storage[hour_key][lot] = {"num": num, "animal": animal}
-                                
-                                key_unique = f"{hour_key}-{lot}-{num}"
-                                if send_alerts and key_unique not in sent_individual_results:
-                                    sent_individual_results.add(key_unique)
-                                    msg = format_individual_message(lot, h_formatted, num, animal)
-                                    bot.send_message(CHANNEL_ID, msg)
+                            key_unique = f"{hour_key}-{lot}-{num}"
+                            
+                            # Si es la primera ejecución al encender el bot, marcamos todo lo existente como ya visto para no spamear
+                            if not initial_load_done:
+                                sent_individual_results.add(key_unique)
+                                results_storage[hour_key][lot] = {"num": num, "info": animal_info}
+                            else:
+                                if lot not in results_storage[hour_key] or results_storage[hour_key][lot]["num"] != num:
+                                    results_storage[hour_key][lot] = {"num": num, "info": animal_info}
+                                    
+                                    if send_alerts and key_unique not in sent_individual_results:
+                                        sent_individual_results.add(key_unique)
+                                        h_display = f"{h_raw}:00"
+                                        msg = format_individual_message(lot, h_display, num, animal_info)
+                                        bot.send_message(CHANNEL_ID, msg)
         except Exception as e:
-            print(f"Error en scraping {url}: {e}")
+            print(f"Error scraping {url}: {e}")
+            
+    initial_load_done = True
 
 def build_table_message():
-    hours = sorted(list(results_storage.keys()))
-    if not hours:
-        hours = ["08:00", "09:00", "10:00", "11:00", "12:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00", "07:00"]
+    # Horarios fijos requeridos de 8:00 AM a 7:00 PM
+    hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
     groups = [
         ["La Granjita", "Lotto Activo", "Selva Plus"],
@@ -273,7 +287,9 @@ def build_table_message():
             for lot in group:
                 res = results_storage.get(h, {}).get(lot)
                 if res:
-                    row_line += f" {res['num']} {res['animal']}"
+                    num = res['num']
+                    emoji = res['info'][1]
+                    row_line += f" {num} {emoji}"
                 else:
                     row_line += " .... 🚫"
             text += row_line + "\n"
@@ -323,6 +339,9 @@ def test_general(message):
 
 def background_scheduler():
     last_min = -1
+    # Carga inicial silenciosa para registrar lo que ya salió y evitar spam al encender
+    scrape_and_notify(send_alerts=False)
+    
     while True:
         now = datetime.now()
         current_hour = now.hour
@@ -345,7 +364,7 @@ def background_scheduler():
             elif current_w_time in ["10:00", "14:00", "17:00"]:
                 bot.send_message(CHANNEL_ID, get_announcement_text())
                 
-            # Envío de la tabla consolidada exactamente en el minuto 10 de cada hora
+            # Envío automático de la tabla actualizada exactamente al minuto 10 de cada hora
             elif current_min == 10:
                 scrape_and_notify(send_alerts=True)
                 bot.send_message(CHANNEL_ID, build_table_message())
@@ -354,7 +373,7 @@ def background_scheduler():
             elif current_w_time == "21:10":
                 bot.send_message(CHANNEL_ID, get_final_text())
 
-        # Rastreo continuo cada 45 segundos para mandar los resultados individuales al instante
+        # Revisión continua en segundo plano cada 45 segundos para detectar nuevos animalitos al instante
         scrape_and_notify(send_alerts=True)
         time.sleep(45)
 
@@ -365,5 +384,5 @@ def run_flask():
 if __name__ == '__main__':
     threading.Thread(target=run_flask, daemon=True).start()
     threading.Thread(target=background_scheduler, daemon=True).start()
-    print("🤖 Bot iniciado...")
+    print("🤖 Bot iniciado correctamente...")
     bot.infinity_polling()
