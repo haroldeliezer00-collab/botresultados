@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import telebot
 from datetime import datetime
 from flask import Flask
+import re
 
 # Configuración principal
 TOKEN = "8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk"
@@ -77,7 +78,7 @@ HEADER_TEXT = (
     "      Mas de 6 años brindando\n"
     "          confianza y seguridad\n"
     "  en cada rincón de Venezuela\n"
-    "       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰ𝙸ᴄɪᴀʟᴇꜱ\n"
+    "       ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰ𝙸ᴄ𝙸ᴀʟᴇꜱ\n"
     "\"𝙻𝚊 𝚜𝚞𝚎𝚛𝚝𝚎 𝚎𝚜 𝚞𝚗𝚊 𝚏𝚕𝚎𝚌𝚑𝚊🏹𝚕𝚊𝚗𝚣𝚊𝚍𝚊 𝚚𝚞𝚎 𝚑𝚊𝚌𝚎 𝚋𝚕𝚊𝚗𝚌𝚘🎯𝚎𝚗 𝚎𝚕 𝚚𝚞𝚎 𝚖𝚎𝚗𝚘𝚜 𝚕𝚊 𝚎𝚜𝚙𝚎𝚛𝚊🤑\"\n"
     "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363\n\n"
@@ -183,7 +184,7 @@ def format_individual_message(loteria, hora, num, animal):
         "https://t.me/resultadosagharoldjose"
     )
 
-def scrape_and_notify(send_alerts=False):
+def scrape_and_notify(send_alerts=True):
     sources = [
         "https://lotery.winbigvzla.com/resultados",
         "https://www.lottoactivo.com/resultados/lotto_activo/",
@@ -197,25 +198,24 @@ def scrape_and_notify(send_alerts=False):
         "https://www.guacaactiva.com/"
     ]
     
-    import re
     for url in sources:
         try:
-            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=8)
+            resp = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}, timeout=10)
             if resp.status_code != 200:
                 continue
             soup = BeautifulSoup(resp.text, 'html.parser')
             
-            for tag in soup.find_all(['h3', 'h4', 'strong', 'div', 'span', 'li']):
-                t = tag.get_text(strip=True)
+            for tag in soup.find_all(['div', 'li', 'tr', 'article', 'section', 'span']):
+                t = tag.get_text(separator=' ', strip=True)
+                if not t or len(t) > 300:
+                    continue
                 if "ruleta royal" in t.lower():
                     continue
                 
                 for lot in ABBR_MAP.keys():
                     if lot.lower() in t.lower():
-                        parent_text = tag.parent.get_text(separator=' ', strip=True) if tag.parent else t
-                        
-                        time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', parent_text, re.IGNORECASE)
-                        num_m = re.search(r'\b(00|0?[0-9]|[1-3][0-5]|36)\b', parent_text)
+                        time_m = re.search(r'(\d{1,2}:\d{2})\s*(AM|PM)?', t, re.IGNORECASE)
+                        num_m = re.search(r'\b(00|0?[0-9]|[1-3][0-5]|36)\b', t)
                         
                         if time_m and num_m:
                             h_raw = time_m.group(1)
@@ -232,15 +232,17 @@ def scrape_and_notify(send_alerts=False):
                             if hour_key not in results_storage:
                                 results_storage[hour_key] = {}
                             
-                            results_storage[hour_key][lot] = {"num": num, "animal": animal}
-                            
-                            key_unique = f"{hour_key}-{lot}-{num}"
-                            if send_alerts and key_unique not in sent_individual_results:
-                                sent_individual_results.add(key_unique)
-                                msg = format_individual_message(lot, h_formatted, num, animal)
-                                bot.send_message(CHANNEL_ID, msg)
+                            # Actualiza o guarda si es nuevo resultado para esa hora y lotería
+                            if lot not in results_storage[hour_key] or results_storage[hour_key][lot]["num"] != num:
+                                results_storage[hour_key][lot] = {"num": num, "animal": animal}
+                                
+                                key_unique = f"{hour_key}-{lot}-{num}"
+                                if send_alerts and key_unique not in sent_individual_results:
+                                    sent_individual_results.add(key_unique)
+                                    msg = format_individual_message(lot, h_formatted, num, animal)
+                                    bot.send_message(CHANNEL_ID, msg)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error en scraping {url}: {e}")
 
 def build_table_message():
     hours = sorted(list(results_storage.keys()))
@@ -343,6 +345,7 @@ def background_scheduler():
             elif current_w_time in ["10:00", "14:00", "17:00"]:
                 bot.send_message(CHANNEL_ID, get_announcement_text())
                 
+            # Envío de la tabla consolidada exactamente en el minuto 10 de cada hora
             elif current_min == 10:
                 scrape_and_notify(send_alerts=True)
                 bot.send_message(CHANNEL_ID, build_table_message())
@@ -351,6 +354,7 @@ def background_scheduler():
             elif current_w_time == "21:10":
                 bot.send_message(CHANNEL_ID, get_final_text())
 
+        # Rastreo continuo cada 45 segundos para mandar los resultados individuales al instante
         scrape_and_notify(send_alerts=True)
         time.sleep(45)
 
