@@ -33,25 +33,13 @@ bot = telebot.TeleBot(TOKEN)
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
 
-ENLACES_OFICIALES = {
-    "LOTTO ACTIVO": "https://www.lottoactivo.com/resultados/lotto_activo/",
-    "GUACHARO ACTIVO": "https://www.guacharoactivo.com.ve/resultados",
-    "LOTO CHAIMA": "https://lotochaima.com/",
-    "LA GRANJITA": "https://lagranjitaonline.com/",
-    "SELVA PLUS": "https://www.selvaplus.com/resultados",
-    "MONJE MILLONARIO": "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
-    "LOTTO ACTIVO RD INTERNACIONAL": "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
-    "GUACA ACTIVA": "https://lotery.winbigvzla.com/resultados",
-    "MEGA GUACA": "https://lotery.winbigvzla.com/resultados",
-    "EL GUACHARITO MILLONARIO": "https://elguacharitomillonario.com/"
-}
-
 taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
 
-# Variables para el Resumen Acumulativo Fijado
-lista_resultados_dia = []
+# Almacén de resultados del día para armar la tabla acumulativa estructurada
+# Estructura: { "08:00 AM": { "GRAJ": "18🫏", "L.ACT": "01🐏", ... }, ... }
+resultados_tabla_dia = {}
 resumen_message_id = None
 
 TEXTO_TAQUILLA = (
@@ -76,7 +64,7 @@ def home():
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
         f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br>"
-        f"Resultados acumulados hoy en memoria: <b>{len(lista_resultados_dia)}</b><br><br>"
+        f"Horas registradas en la tabla hoy: <b>{len(resultados_tabla_dia)}</b><br><br>"
         "<b>Enlaces de prueba rápida (Test):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada</a><br>"
         "👉 <a href='/test/piramide'>Probar Pirámide Numérica</a><br>"
@@ -158,15 +146,15 @@ def enviar_telegram(mensaje, disable_web_preview=True):
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
 def limpiar_memoria_diaria():
-    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal, lista_resultados_dia, resumen_message_id
+    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal, resultados_tabla_dia, resumen_message_id
     resultados_enviados.clear()
     primera_ejecucion = True
     taquilla_activa_hoy = False
     imagen_activa_id = None
     ultimo_id_foto_canal = None
-    lista_resultados_dia.clear()
+    resultados_tabla_dia.clear()
     resumen_message_id = None
-    print("🧹 Memoria y resumen acumulativo limpiados para el nuevo día.")
+    print("🧹 Memoria y tabla acumulativa limpiadas para el nuevo día.")
 
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
@@ -308,22 +296,108 @@ def enviar_aviso_taquilla():
         disable_web_preview=True
     )
 
+def obtener_abreviatura(nombre_lotto):
+    n = nombre_lotto.upper()
+    if "GRANJITA" in n or "GRAJ" in n:
+        return "GRAJ"
+    elif "LOTTO ACTIVO" in n and "INTERNACIONAL" not in n:
+        return "L.ACT"
+    elif "SELVA" in n:
+        return "SELV"
+    elif "GUACHARO" in n:
+        return "G.ARO"
+    elif "CHAIMA" in n:
+        return "CHAIM"
+    elif "MONJE" in n:
+        return "MONJE"
+    elif "ANIMALITOS" in n or "L.ANIM" in n:
+        return "L.ANIM"
+    elif "PANTERA" in n:
+        return "L.PANT"
+    elif "REAL" in n:
+        return "L.REAL"
+    elif "RD" in n:
+        return "L.RD"
+    elif "CENTRO" in n or "CEN" in n:
+        return "CEN.A"
+    elif "MEGA" in n:
+        return "MEGA"
+    elif "PARLEY" in n:
+        return "R.PER"
+    elif "COLOMBIA" in n:
+        return "R.COL"
+    elif "VENEZUELA" in n:
+        return "R.VEN"
+    elif "CONDE" in n:
+        return "COND"
+    elif "FRUTA" in n:
+        return "FRUI"
+    elif "TROPICAL" in n:
+        return "TROP"
+    elif "MILLONARIO" in n:
+        return "G.MIL"
+    elif "ZODIACAL" in n or "ZOOL" in n:
+        return "ZOOL"
+    elif "MAX" in n:
+        return "L.MAX"
+    # Por defecto usamos las primeras 4 letras en mayúscula
+    return n[:4]
+
 def actualizar_mensaje_resumen():
-    global resumen_message_id, lista_resultados_dia
-    if not lista_resultados_dia:
+    """Crea o edita el mensaje principal fijado manteniendo el formato de tabla exacto."""
+    global resumen_message_id, resultados_tabla_dia
+    if not resultados_tabla_dia:
         return
 
-    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+    # Encabezado fijo que pediste
     texto = (
-        "🎯 *AGENCIA HAROLD JOSE - RESUMEN ACUMULATIVO* 🎯\n\n"
-        f"📅 *Fecha:* {fecha_hoy}\n"
-        "📊 *Tabla de Resultados del Día (Actualizada):*\n\n"
+        "╔═══════ ⋆★⋆ ═══════╗\n"
+        "   ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
+        "╚═══════ ⋆★⋆ ═══════╝\n"
+        "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n"
+        "      Mas de 6 años brindando\n"
+        "         confianza y seguridad\n"
+        "    en cada rincón de Venezuela\n"
+        "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪᴀʟᴇꜱ\n"
+        "📲JUEGA AQUI👇👇\n"
+        "WHATSAPP: 04124489363\n"
+        "📰RESULTADOS ANIMALITOS📰\n"
+        "➖➖➖➖➖➖➖➖➖➖\n"
     )
 
-    for item in lista_resultados_dia:
-        texto += f"🎰 *{item['loteria']}* | 🕒 {item['hora']} ➔ *{item['resultado']}*\n"
+    # Agrupar las columnas de 3 en 3 como en tu ejemplo original
+    # Definimos bloques estándar de loterías
+    bloques = [
+        ["GRAJ", "L.ACT", "SELV"],
+        ["G.ARO", "CHAIM", "MONJE"],
+        ["L.ANIM", "L.PANT", "L.REAL"],
+        ["L.RD", "CEN.A", "MEGA"],
+        ["R.PER", "R.COL", "R.VEN"],
+        ["COND", "FRUI", "TROP"],
+        ["G.MIL", "ZOOL", "L.MAX"]
+    ]
 
-    texto += f"\n🔗 {ENLACE_CANAL}"
+    # Ordenar las horas cronológicamente (ej. 08:00 AM, 09:00 AM...)
+    horas_ordenadas = sorted(resultados_tabla_dia.keys())
+
+    for b_idx, bloque in enumerate(bloques):
+        c1, c2, c3 = bloque[0], bloque[1], bloque[2]
+        # Cabecera del bloque de 3 columnas
+        texto += f" HORA🎰{c1[:4]}🪙{c2[:4]}🪙{c3[:4]}\n"
+        texto += "➖➖➖➖➖➖➖➖➖➖\n"
+
+        for hora in horas_ordenadas:
+            datos_hora = resultados_tabla_dia[hora]
+            # Si en esta hora hay al menos un resultado de este bloque, lo mostramos
+            r1 = datos_hora.get(c1, "....🚫")
+            r2 = datos_hora.get(c2, "....🚫")
+            r3 = datos_hora.get(c3, "....🚫")
+            texto += f"⏰{hora[:5]}  {r1:<6} {r2:<6} {r3:<6}\n"
+
+        if b_idx < len(bloques) - 1:
+            texto += "\n"
+
+    texto += "\nMUCHA SUERTE EN SUS JUGADAS"
 
     try:
         if resumen_message_id:
@@ -334,7 +408,7 @@ def actualizar_mensaje_resumen():
                 parse_mode="Markdown",
                 disable_web_page_preview=True
             )
-            print("📝 Mensaje resumen acumulativo actualizado correctamente en el canal.")
+            print("📝 Tabla resumen acumulativa actualizada con éxito en el canal.")
         else:
             msg = bot.send_message(
                 chat_id=CANAL,
@@ -345,11 +419,11 @@ def actualizar_mensaje_resumen():
             resumen_message_id = msg.message_id
             try:
                 bot.pin_chat_message(chat_id=CANAL, message_id=resumen_message_id)
-                print("📌 Nuevo mensaje resumen acumulativo enviado y fijado con éxito.")
+                print("📌 Nueva tabla resumen enviada y fijada con éxito.")
             except Exception as pin_err:
-                print(f"⚠️ No se pudo fijar el mensaje resumen: {pin_err}")
+                print(f"⚠️ No se pudo fijar la tabla resumen: {pin_err}")
     except Exception as e:
-        print(f"⚠️ Error al actualizar/enviar mensaje resumen acumulativo: {e}")
+        print(f"⚠️ Error al actualizar tabla resumen: {e}")
         try:
             msg = bot.send_message(
                 chat_id=CANAL,
@@ -360,7 +434,7 @@ def actualizar_mensaje_resumen():
             resumen_message_id = msg.message_id
             bot.pin_chat_message(chat_id=CANAL, message_id=resumen_message_id)
         except Exception as e2:
-            print(f"⚠️ Error crítico al recrear el mensaje resumen: {e2}")
+            print(f"⚠️ Error crítico al recrear la tabla: {e2}")
 
 def tarea_minuto_diez():
     enviar_telegram(
@@ -368,9 +442,16 @@ def tarea_minuto_diez():
         "Puedes verlas aquí 👇🏻\nhttps://t.me/pollasydupletas\n\n¡Mucho éxito! 🍀",
         disable_web_preview=False
     )
-    if lista_resultados_dia:
+    if resultados_tabla_dia:
         actualizar_mensaje_resumen()
-    print("⏰ Tarea del minuto 10 ejecutada (Pollas + Resumen).")
+    print("⏰ Tarea del minuto 10 ejecutada (Pollas + Tabla Resumen).")
+
+def enviar_aviso_pollas():
+    enviar_telegram(
+        "🎯 AGENCIA HAROLD JOSE 🎯\n\n📢 ¡Pollas actualizadas!\n"
+        "Puedes verlas aquí 👇🏻\nhttps://t.me/pollasydupletas\n\n¡Mucho éxito! 🍀",
+        disable_web_preview=False
+    )
 
 def enviar_mensaje_cierre():
     enviar_telegram(
@@ -380,7 +461,7 @@ def enviar_mensaje_cierre():
     )
 
 def verificar_resultados():
-    global resultados_enviados, primera_ejecucion, lista_resultados_dia
+    global resultados_enviados, primera_ejecucion, resultados_tabla_dia
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
@@ -433,87 +514,39 @@ def verificar_resultados():
                 if not match_res:
                     continue
 
-                resultado_final = limpiar_texto(match_res.group(1)).upper()
-                clave = (nombre_loteria, hora, resultado_final)
+                resultado_crudo = limpiar_texto(match_res.group(1)).upper()
+                clave = (nombre_loteria, hora, resultado_crudo)
+
+                # Formatear el resultado en estilo "18🫏" (número + animalito acortado si aplica)
+                partes_res = resultado_crudo.split(" - ")
+                if len(partes_res) == 2:
+                    num_res = partes_res[0].strip()
+                    anim_res = partes_res[1].strip()
+                    # Extraer el primer emoji o letra representativa si lo hay, o dejar el texto
+                    resultado_formateado = f"{num_res}{anim_res[:2]}"
+                else:
+                    resultado_formateado = resultado_crudo
+
+                abrev = obtener_abreviatura(nombre_loteria)
+
+                if hora not in resultados_tabla_dia:
+                    resultados_tabla_dia[hora] = {}
 
                 if primera_ejecucion:
                     resultados_enviados.add(clave)
-                    item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
-                    if item_dict not in lista_resultados_dia:
-                        lista_resultados_dia.append(item_dict)
+                    resultados_tabla_dia[hora][abrev] = resultado_formateado
                 else:
                     if clave not in resultados_enviados:
-                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                        item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_crudo}
                         if item_dict not in nuevos_encontrados:
                             nuevos_encontrados.append(item_dict)
                             resultados_enviados.add(clave)
-                            if item_dict not in lista_resultados_dia:
-                                lista_resultados_dia.append(item_dict)
+                            resultados_tabla_dia[hora][abrev] = resultado_formateado
 
         if primera_ejecucion:
             primera_ejecucion = False
-            if lista_resultados_dia:
+            if resultados_tabla_dia:
                 actualizar_mensaje_resumen()
             return
 
-        if nuevos_encontrados:
-            for item_nuevo in nuevos_encontrados:
-                mensaje = (
-                    "🎯 AG HAROLD JOSE 🎯\n\n"
-                    f"🎰 {item_nuevo['loteria']}\n"
-                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
-                    f"{ENLACE_CANAL}"
-                )
-                enviar_telegram(mensaje, disable_web_preview=True)
-                time.sleep(3)
-            
-            actualizar_mensaje_resumen()
-
-    except Exception as e:
-        print(f"Error en resultados: {e}")
-
-def loop_bot():
-    verificar_resultados()
-    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
-    schedule.every().day.at("06:31").do(enviar_piramide_diaria)
-    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
-    
-    schedule.every().hour.at(":10").do(tarea_minuto_diez)
-
-    schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
-    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-    schedule.every(1).minute.do(verificar_resultados)
-
-    while True:
-        try:
-            schedule.run_pending()
-        except Exception as e:
-            print(f"Error en schedule: {e}")
-        time.sleep(1)
-
-def iniciar_polling_bot():
-    while True:
-        try:
-            bot.infinity_polling(skip_pending=True, interval=3, timeout=20)
-        except Exception as e:
-            print(f"⚠️ Error en polling de Telegram: {e}")
-            traceback.print_exc()
-            time.sleep(5)
-
-if __name__ == '__main__':
-    t_schedule = Thread(target=loop_bot)
-    t_schedule.daemon = True
-    t_schedule.start()
-
-    t_bot = Thread(target=iniciar_polling_bot)
-    t_bot.daemon = True
-    t_bot.start()
-
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+        
