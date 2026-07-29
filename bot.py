@@ -38,7 +38,6 @@ imagen_activa_id = None
 ultimo_id_foto_canal = None
 
 # Almacén de resultados del día para armar la tabla acumulativa estructurada
-# Estructura: { "08:00 AM": { "GRAJ": "18🫏", "L.ACT": "01🐏", ... }, ... }
 resultados_tabla_dia = {}
 resumen_message_id = None
 
@@ -340,16 +339,13 @@ def obtener_abreviatura(nombre_lotto):
         return "ZOOL"
     elif "MAX" in n:
         return "L.MAX"
-    # Por defecto usamos las primeras 4 letras en mayúscula
     return n[:4]
 
 def actualizar_mensaje_resumen():
-    """Crea o edita el mensaje principal fijado manteniendo el formato de tabla exacto."""
     global resumen_message_id, resultados_tabla_dia
     if not resultados_tabla_dia:
         return
 
-    # Encabezado fijo que pediste
     texto = (
         "╔═══════ ⋆★⋆ ═══════╗\n"
         "   ★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
@@ -365,8 +361,6 @@ def actualizar_mensaje_resumen():
         "➖➖➖➖➖➖➖➖➖➖\n"
     )
 
-    # Agrupar las columnas de 3 en 3 como en tu ejemplo original
-    # Definimos bloques estándar de loterías
     bloques = [
         ["GRAJ", "L.ACT", "SELV"],
         ["G.ARO", "CHAIM", "MONJE"],
@@ -377,18 +371,15 @@ def actualizar_mensaje_resumen():
         ["G.MIL", "ZOOL", "L.MAX"]
     ]
 
-    # Ordenar las horas cronológicamente (ej. 08:00 AM, 09:00 AM...)
     horas_ordenadas = sorted(resultados_tabla_dia.keys())
 
     for b_idx, bloque in enumerate(bloques):
         c1, c2, c3 = bloque[0], bloque[1], bloque[2]
-        # Cabecera del bloque de 3 columnas
         texto += f" HORA🎰{c1[:4]}🪙{c2[:4]}🪙{c3[:4]}\n"
         texto += "➖➖➖➖➖➖➖➖➖➖\n"
 
         for hora in horas_ordenadas:
             datos_hora = resultados_tabla_dia[hora]
-            # Si en esta hora hay al menos un resultado de este bloque, lo mostramos
             r1 = datos_hora.get(c1, "....🚫")
             r2 = datos_hora.get(c2, "....🚫")
             r3 = datos_hora.get(c3, "....🚫")
@@ -517,12 +508,10 @@ def verificar_resultados():
                 resultado_crudo = limpiar_texto(match_res.group(1)).upper()
                 clave = (nombre_loteria, hora, resultado_crudo)
 
-                # Formatear el resultado en estilo "18🫏" (número + animalito acortado si aplica)
                 partes_res = resultado_crudo.split(" - ")
                 if len(partes_res) == 2:
                     num_res = partes_res[0].strip()
                     anim_res = partes_res[1].strip()
-                    # Extraer el primer emoji o letra representativa si lo hay, o dejar el texto
                     resultado_formateado = f"{num_res}{anim_res[:2]}"
                 else:
                     resultado_formateado = resultado_crudo
@@ -549,4 +538,24 @@ def verificar_resultados():
                 actualizar_mensaje_resumen()
             return
 
-        
+        if nuevos_encontrados:
+            for item_nuevo in nuevos_encontrados:
+                mensaje = (
+                    "🎯 AG HAROLD JOSE 🎯\n\n"
+                    f"🎰 {item_nuevo['loteria']}\n"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
+                    f"{ENLACE_CANAL}"
+                )
+                enviar_telegram(mensaje, disable_web_preview=True)
+                time.sleep(3)
+            
+            actualizar_mensaje_resumen()
+
+    except Exception as e:
+        print(f"Error en resultados: {e}")
+
+def loop_bot():
+    verificar_resultados()
+    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
+    schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
+    schedule.every().day.at("06:31").
