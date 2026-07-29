@@ -1,6 +1,5 @@
-Flask
+python-telegram-bot
 requests
 beautifulsoup4
 schedule
-pyTelegramBotAPI
-urllib3
+flask
