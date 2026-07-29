@@ -498,7 +498,7 @@ def formatear_hora_tabla(h_str):
     except:
         return h_str
 
-# --- CONSTRUCCIÓN DE LA TABLA DE RESULTADOS (DISEÑO COMPACTO Y ALINEADO) ---
+# --- CONSTRUCCIÓN DE LA TABLA DE RESULTADOS (DISEÑO COMPACTO Y ALINEADO CON 2 CÍRCULOS) ---
 def build_table_message():
     hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
@@ -515,10 +515,9 @@ def build_table_message():
     text = HEADER_TEXT + "\n"
 
     for group in groups:
-        header_line = "HORA🏛️"
-        for lot in group:
-            abbr = ABBR_MAP.get(lot, lot[:5])
-            header_line += f"⚪{abbr}" # Sin espacio antes del círculo blanco
+        # Exactamente 2 círculos separadores para las 3 loterías del grupo
+        abbrs = [ABBR_MAP.get(lot, lot[:5]) for lot in group]
+        header_line = "HORA🏛️" + "⚪".join(abbrs)
         text += header_line + "\n"
 
         for h in hours:
@@ -548,7 +547,7 @@ def enviar_tabla_resultados():
     except Exception as e:
         print(f"⚠️ Error al enviar tabla de resultados: {e}")
 
-# --- RASPADO WEB Y ACTUALIZACIÓN EN TIEMPO REAL ---
+# --- RASPADO WEB ROBUSTO Y SEPARADO POR CADA LOTERÍA OFICIAL ---
 def verificar_resultados():
     global resultados_enviados, primera_ejecucion, results_storage
     try:
@@ -556,88 +555,70 @@ def verificar_resultados():
         
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
         if respuesta.status_code != 200:
-            for nombre_ofi, url_ofi in ENLACES_OFICIALES.items():
-                try:
-                    res_ofi = requests.get(url_ofi, headers=headers, timeout=10, verify=False)
-                    if res_ofi.status_code == 200:
-                        pass
-                except:
-                    pass
             return
 
         soup = BeautifulSoup(respuesta.text, 'html.parser')
-        tarjetas = soup.find_all(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
-
         nuevos_encontrados = []
 
-        for tarjeta in tarjetas:
-            nombre_loteria = ""
-            posibles_titulos = tarjeta.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'span', 'div', 'strong', 'b'], class_=re.compile(r'title|header|name|lotto|text', re.IGNORECASE))
-            for pt in posibles_titulos:
-                t_text = pt.get_text(" ", strip=True).upper()
-                if t_text and len(t_text) > 2 and not re.search(r'\d{1,2}:\d{2}', t_text) and "PENDIENTE" not in t_text:
-                    if t_text not in ["WINBIG", "RESULTADOS"]:
-                        nombre_loteria = t_text
-                        break
-
-            if not nombre_loteria:
-                lineas = [l.strip().upper() for l in tarjeta.get_text("\n", strip=True).split("\n") if l.strip()]
-                for linea in lineas:
-                    if len(linea) > 2 and not re.search(r'\d{1,2}:\d{2}', linea) and "PENDIENTE" not in linea and "-" not in linea:
-                        nombre_loteria = linea
-                        break
-
-            if not nombre_loteria or len(nombre_loteria) > 40:
-                continue
-
-            nombre_loteria = limpiar_texto(nombre_loteria)
-            matched_key_lot = obtener_clave_estandar(nombre_loteria)
-
-            slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
-            if not slots_sorteo:
-                slots_sorteo = [tarjeta]
-
-            for slot in slots_sorteo:
-                texto_slot = slot.get_text(" ", strip=True).upper()
-                if "PENDIENTE" in texto_slot:
+        # Recorremos cada nombre oficial en ABBR_MAP para aislar correctamente su sección y evitar cruces de datos
+        for nombre_lot_oficial in ABBR_MAP.keys():
+            patron = re.compile(re.escape(nombre_lot_oficial), re.IGNORECASE)
+            elementos_titulo = soup.find_all(string=patron)
+            
+            for el_titulo in elementos_titulo:
+                # Subir al contenedor padre que agrupa esta lotería específica
+                contenedor = el_titulo.find_parent(['div', 'article', 'section'], class_=re.compile(r'card|box|item|lotto|result', re.IGNORECASE))
+                if not contenedor:
+                    contenedor = el_titulo.find_parent('div')
+                if not contenedor:
                     continue
-
-                match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_slot)
-                if not match_h:
-                    continue
-                hora_cruda = match_h.group(1).upper()
-                hora_normalizada = normalizar_hora_tabla(hora_cruda)
-                if not hora_normalizada:
-                    continue
-
-                match_res = re.search(r'(\d{1,2}\s*[-–—]\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
-                if not match_res:
-                    continue
-
-                resultado_final = limpiar_texto(match_res.group(1)).upper()
                 
-                # Aceptar números de 1 o 2 dígitos (Soporta Guácharo Activo y otros rangos)
-                num_m = re.search(r'\b(\d{1,2})\b', resultado_final)
-                if num_m:
-                    num_val = num_m.group(1).zfill(2)
-                    # Buscar animalito o asignar un icono por defecto si el número es superior a 36
-                    animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
+                matched_key_lot = obtener_clave_estandar(nombre_lot_oficial)
+                
+                # Extraer todos los slots o filas de resultados dentro de este contenedor específico
+                slots_sorteo = contenedor.find_all(['div', 'li', 'span', 'tr', 'p'], class_=re.compile(r'item|slot|draw|row|col|result', re.IGNORECASE))
+                if not slots_sorteo:
+                    slots_sorteo = [contenedor]
+                
+                for slot in slots_sorteo:
+                    texto_slot = slot.get_text(" ", strip=True).upper()
+                    if "PENDIENTE" in texto_slot:
+                        continue
                     
-                    if hora_normalizada not in results_storage:
-                        results_storage[hora_normalizada] = {}
+                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto_slot)
+                    if not match_h:
+                        continue
+                    hora_cruda = match_h.group(1).upper()
+                    hora_normalizada = normalizar_hora_tabla(hora_cruda)
+                    if not hora_normalizada:
+                        continue
                     
-                    results_storage[hora_normalizada][matched_key_lot] = {'num': num_val, 'info': animal_info}
+                    match_res = re.search(r'(\d{1,2}\s*[-–—]\s*[A-ZÁÉÍÓÚÑa-zñáéíóú]+(?:\s+[A-ZÁÉÍÓÚÑa-zñáéíóú]+)?)', texto_slot)
+                    if not match_res:
+                        continue
+                    
+                    resultado_final = limpiar_texto(match_res.group(1)).upper()
+                    
+                    num_m = re.search(r'\b(\d{1,2})\b', resultado_final)
+                    if num_m:
+                        num_val = num_m.group(1).zfill(2)
+                        animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
+                        
+                        if hora_normalizada not in results_storage:
+                            results_storage[hora_normalizada] = {}
+                        
+                        results_storage[hora_normalizada][matched_key_lot] = {'num': num_val, 'info': animal_info}
 
-                clave = (nombre_loteria, hora_cruda, resultado_final)
+                        clave = (matched_key_lot, hora_cruda, resultado_final)
 
-                if primera_ejecucion:
-                    resultados_enviados.add(clave)
-                else:
-                    if clave not in resultados_enviados:
-                        item_dict = {'loteria': nombre_loteria, 'hora': hora_cruda, 'resultado': resultado_final}
-                        if item_dict not in nuevos_encontrados:
-                            nuevos_encontrados.append(item_dict)
+                        if primera_ejecucion:
                             resultados_enviados.add(clave)
+                        else:
+                            if clave not in resultados_enviados:
+                                item_dict = {'loteria': matched_key_lot, 'hora': hora_cruda, 'resultado': resultado_final}
+                                if item_dict not in nuevos_encontrados:
+                                    nuevos_encontrados.append(item_dict)
+                                    resultados_enviados.add(clave)
 
         if primera_ejecucion:
             primera_ejecucion = False
