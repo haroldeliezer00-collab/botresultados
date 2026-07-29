@@ -149,7 +149,7 @@ ANIMAL_DATA = {
     "14": ("PALOMA", "🕊️"), "15": ("ZORRO", "🦊"), "16": ("OSO", "🐻"), 
     "17": ("PAVO", "🦃"), "18": ("BURRO", "🫏"), "19": ("CHIVO", "🐐"), 
     "20": ("COCHINO", "🐖"), "21": ("GALLO", "🐓"), "22": ("CAMELLO", "🐪"), 
-    "23": ("ZEBRA", "ZE"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
+    "23": ("ZEBRA", "🦓"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
     "26": ("VACA", "🐄"), "27": ("PERRO", "🐕"), "28": ("ZAMURO", "🦅"), 
     "29": ("ELEFANTE", "🐘"), "30": ("CAIMAN", "🐊"), "31": ("JIRAFA", "🦒"), 
     "32": ("CULEBRA", "🐍"), "33": ("PESCADO", "🐟"), "34": ("VENADO", "🦌"), 
@@ -498,7 +498,7 @@ def formatear_hora_tabla(h_str):
     except:
         return h_str
 
-# --- CONSTRUCCIÓN DE LA TABLA DE RESULTADOS CON ESPACIADO EXACTO ---
+# --- CONSTRUCCIÓN DE LA TABLA DE RESULTADOS (DISEÑO COMPACTO Y ALINEADO) ---
 def build_table_message():
     hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
@@ -518,23 +518,23 @@ def build_table_message():
         header_line = "HORA🏛️"
         for lot in group:
             abbr = ABBR_MAP.get(lot, lot[:5])
-            header_line += f"   ⚪{abbr}"
+            header_line += f"⚪{abbr}" # Sin espacio antes del círculo blanco
         text += header_line + "\n"
 
         for h in hours:
             h_display = formatear_hora_tabla(h) # "08:00"
-            row_line = f"⏰{h_display}" # Reloj pegado directamente a la hora
+            row_line = f"⏰{h_display}  " # Hora pegada al reloj, seguida de 2 espacios de separación
             for lot in group:
                 res = results_storage.get(h, {}).get(lot)
                 if res:
                     num = res['num']
                     emoji = res['info'][1]
-                    # Número pegado al animalito, seguido de 3 espacios de separación
-                    row_line += f"   {num}{emoji}"
+                    # Número y animalito completamente pegados, seguidos de 3 espacios hacia la siguiente columna
+                    row_line += f"{num}{emoji}   "
                 else:
-                    # Sin resultado, seguido de 3 espacios de separación
-                    row_line += "   ....🚫"
-            text += row_line + "\n"
+                    # Sin resultado, con el mismo espaciado uniforme
+                    row_line += f"....🚫   "
+            text += row_line.rstrip() + "\n" # Limpiar espacios sobrantes al final de cada fila
         text += "\n"
 
     text += "MUCHA SUERTE EN SUS JUGADAS"
@@ -591,7 +591,6 @@ def verificar_resultados():
                 continue
 
             nombre_loteria = limpiar_texto(nombre_loteria)
-            # Mapear nombre capturado a la clave estandarizada de la tabla (Soporta acentos)
             matched_key_lot = obtener_clave_estandar(nombre_loteria)
 
             slots_sorteo = tarjeta.find_all(['div', 'li', 'span', 'tr'], class_=re.compile(r'item|slot|draw|row|col', re.IGNORECASE))
@@ -617,16 +616,16 @@ def verificar_resultados():
 
                 resultado_final = limpiar_texto(match_res.group(1)).upper()
                 
-                # Extraer número y animalito para almacenar en results_storage
-                num_m = re.search(r'\b(00|0?[0-9]|[1-3][0-5]|36)\b', resultado_final)
+                # Aceptar números de 1 o 2 dígitos (Soporta Guácharo Activo y otros rangos)
+                num_m = re.search(r'\b(\d{1,2})\b', resultado_final)
                 if num_m:
                     num_val = num_m.group(1).zfill(2)
-                    animal_info = ANIMAL_DATA.get(str(int(num_val)), ANIMAL_DATA.get(num_val, ("ANIMAL", "🎲")))
+                    # Buscar animalito o asignar un icono por defecto si el número es superior a 36
+                    animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
                     
                     if hora_normalizada not in results_storage:
                         results_storage[hora_normalizada] = {}
                     
-                    # Almacenar siempre en results_storage usando la clave estandarizada
                     results_storage[hora_normalizada][matched_key_lot] = {'num': num_val, 'info': animal_info}
 
                 clave = (nombre_loteria, hora_cruda, resultado_final)
