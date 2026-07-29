@@ -494,11 +494,13 @@ def loop_bot():
         schedule.run_pending()
         time.sleep(1)
 
+def iniciar_polling_bot():
+    bot.infinity_polling(skip_pending=True)
+
 if __name__ == '__main__':
     # Hilo para ejecutar las tareas programadas y web scraping de resultados
     t_schedule = Thread(target=loop_bot)
     t_schedule.daemon = True
     t_schedule.start()
 
-    # Hilo secundario para que el bot escuche los mensajes del canal en segundo plano
-    t_bot = Thread(target=lam
+    # Hilo secundario para que el bot escuc
