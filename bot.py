@@ -50,6 +50,10 @@ taquilla_activa_hoy = False
 imagen_activa_id = None
 ultimo_id_foto_canal = None
 
+# Variables para el Resumen Acumulativo Fijado
+lista_resultados_dia = []
+resumen_message_id = None
+
 TEXTO_TAQUILLA = (
     "✅ AG HAROLD JOSÉ ACTIVA ✅\n"
     "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
@@ -71,14 +75,15 @@ def home():
     color_estado = "green" if taquilla_activa_hoy else "red"
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br>"
-        f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
+        f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br>"
+        f"Resultados acumulados hoy en memoria: <b>{len(lista_resultados_dia)}</b><br><br>"
         "<b>Enlaces de prueba rápida (Test):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada</a><br>"
         "👉 <a href='/test/piramide'>Probar Pirámide Numérica</a><br>"
         "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
         "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
         "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
-        "👉 <a href='/test/pollas'>Probar Aviso de Pollas</a><br>"
+        "👉 <a href='/test/pollas'>Probar Aviso de Pollas y Resumen</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a><br>"
         "👉 <a href='/test/cierre'>Probar Mensaje de Cierre</a><br>"
         "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla</a>"
@@ -112,8 +117,8 @@ def test_taquilla():
 
 @app.route('/test/pollas')
 def test_pollas():
-    enviar_aviso_pollas()
-    return "Prueba ejecutada."
+    tarea_minuto_diez()
+    return "Prueba ejecutada (Pollas + Resumen Acumulativo)."
 
 @app.route('/test/resultados')
 def test_resultados():
@@ -153,13 +158,15 @@ def enviar_telegram(mensaje, disable_web_preview=True):
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
 def limpiar_memoria_diaria():
-    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal
+    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal, lista_resultados_dia, resumen_message_id
     resultados_enviados.clear()
     primera_ejecucion = True
     taquilla_activa_hoy = False
     imagen_activa_id = None
     ultimo_id_foto_canal = None
-    print("🧹 Memoria limpiada para el nuevo día.")
+    lista_resultados_dia.clear()
+    resumen_message_id = None
+    print("🧹 Memoria y resumen acumulativo limpiados para el nuevo día.")
 
 def activar_taquilla_proceso():
     global taquilla_activa_hoy, imagen_activa_id
@@ -301,12 +308,74 @@ def enviar_aviso_taquilla():
         disable_web_preview=True
     )
 
-def enviar_aviso_pollas():
+def actualizar_mensaje_resumen():
+    """Crea o edita el mensaje principal fijado en el canal con la tabla acumulativa del día."""
+    global resumen_message_id, lista_resultados_dia
+    if not lista_resultados_dia:
+        return
+
+    fecha_hoy = datetime.now().strftime("%d/%m/%Y")
+    texto = (
+        "🎯 *AGENCIA HAROLD JOSE - RESUMEN ACUMULATIVO* 🎯\n\n"
+        f"📅 *Fecha:* {fecha_hoy}\n"
+        "📊 *Tabla de Resultados del Día (Actualizada):*\n\n"
+    )
+
+    for item in lista_resultados_dia:
+        texto += f"🎰 *{item['loteria']}* | 🕒 {item['hora']} ➔ *{item['resultado']}*\n"
+
+    texto += f"\n🔗 {ENLACE_CANAL}"
+
+    try:
+        if resumen_message_id:
+            # Editar el mensaje existente en el canal
+            bot.edit_message_text(
+                chat_id=CANAL,
+                message_id=resumen_message_id,
+                text=texto,
+                parse_mode="Markdown",
+                disable_web_page_preview=True
+            )
+            print("📝 Mensaje resumen acumulativo actualizado correctamente en el canal.")
+        else:
+            # Si no existe, enviarlo nuevo y fijarlo (Pin)
+            msg = bot.send_message(
+                chat_id=CANAL,
+                text=texto,
+                parse_mode="Markdown",
+                disable_web_page_preview=True
+            )
+            resumen_message_id = msg.message_id
+            try:
+                bot.pin_chat_message(chat_id=CANAL, message_id=resumen_message_id)
+                print("📌 Nuevo mensaje resumen acumulativo enviado y fijado con éxito.")
+            except Exception as pin_err:
+                print(f"⚠️ No se pudo fijar el mensaje resumen: {pin_err}")
+    except Exception as e:
+        print(f"⚠️ Error al actualizar/enviar mensaje resumen acumulativo: {e}")
+        # Si el mensaje fue borrado manualmente, creamos uno nuevo
+        try:
+            msg = bot.send_message(
+                chat_id=CANAL,
+                text=texto,
+                parse_mode="Markdown",
+                disable_web_page_preview=True
+            )
+            resumen_message_id = msg.message_id
+            bot.pin_chat_message(chat_id=CANAL, message_id=resumen_message_id)
+        except Exception as e2:
+            print(f"⚠️ Error crítico al recrear el mensaje resumen: {e2}")
+
+def tarea_minuto_diez():
+    """Ejecutado al minuto 10 de cada hora: Manda aviso de pollas y fuerza actualización del resumen acumulativo."""
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n📢 ¡Pollas actualizadas!\n"
         "Puedes verlas aquí 👇🏻\nhttps://t.me/pollasydupletas\n\n¡Mucho éxito! 🍀",
         disable_web_preview=False
     )
+    if lista_resultados_dia:
+        actualizar_mensaje_resumen()
+    print("⏰ Tarea del minuto 10 ejecutada (Pollas + Resumen).")
 
 def enviar_mensaje_cierre():
     enviar_telegram(
@@ -316,7 +385,7 @@ def enviar_mensaje_cierre():
     )
 
 def verificar_resultados():
-    global resultados_enviados, primera_ejecucion
+    global resultados_enviados, primera_ejecucion, lista_resultados_dia
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
         respuesta = requests.get(URL_LOTERIA, headers=headers, timeout=15)
@@ -374,26 +443,38 @@ def verificar_resultados():
 
                 if primera_ejecucion:
                     resultados_enviados.add(clave)
+                    # Añadir también al acumulativo inicial si ya salieron en la primera lectura del día
+                    item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
+                    if item_dict not in lista_resultados_dia:
+                        lista_resultados_dia.append(item_dict)
                 else:
                     if clave not in resultados_enviados:
                         item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
                         if item_dict not in nuevos_encontrados:
                             nuevos_encontrados.append(item_dict)
                             resultados_enviados.add(clave)
+                            if item_dict not in lista_resultados_dia:
+                                lista_resultados_dia.append(item_dict)
 
         if primera_ejecucion:
             primera_ejecucion = False
+            if lista_resultados_dia:
+                actualizar_mensaje_resumen()
             return
 
-        for item_nuevo in nuevos_encontrados:
-            mensaje = (
-                "🎯 AG HAROLD JOSE 🎯\n\n"
-                f"🎰 {item_nuevo['loteria']}\n"
-                f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
-                f"{ENLACE_CANAL}"
-            )
-            enviar_telegram(mensaje, disable_web_preview=True)
-            time.sleep(3)
+        if nuevos_encontrados:
+            for item_nuevo in nuevos_encontrados:
+                mensaje = (
+                    "🎯 AG HAROLD JOSE 🎯\n\n"
+                    f"🎰 {item_nuevo['loteria']}\n"
+                    f"🕒 {item_nuevo['hora']}  {item_nuevo['resultado']}\n"
+                    f"{ENLACE_CANAL}"
+                )
+                enviar_telegram(mensaje, disable_web_preview=True)
+                time.sleep(3)
+            
+            # Actualizar el mensaje resumen fijado en el canal con los nuevos resultados
+            actualizar_mensaje_resumen()
 
     except Exception as e:
         print(f"Error en resultados: {e}")
@@ -408,7 +489,10 @@ def loop_bot():
     schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
-    schedule.every().hour.at(":10").do(enviar_aviso_pollas)
+    
+    # Minuto 10: Envía aviso de pollas y actualiza la tabla resumen acumulativa fijada
+    schedule.every().hour.at(":10").do(tarea_minuto_diez)
+
     schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
@@ -439,5 +523,4 @@ if __name__ == '__main__':
     t_bot.daemon = True
     t_bot.start()
 
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.
