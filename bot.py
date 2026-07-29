@@ -1,50 +1,36 @@
-from threading import Thread
 import time
 from datetime import datetime
-from flask import Flask
-import schedule
 import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
 from telegram.error import TelegramError
 
-# Mini servidor Flask para mantener el bot activo en Render
-app = Flask('')
-
-
-@app.route('/')
-def home():
-  return "Bot de Agencia Harold José activo 🚀"
-
-
-def run_flask():
-  app.run(host='0.0.0.0', port=10000)
-
-
-# Configuración del Bot de Telegram
 TOKEN = "8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk"
 CHANNEL_ID = "@pruebajsj"
 bot = Bot(token=TOKEN)
 
-pinned_summary_message_id = None
+# Memoria temporal para control del día
+processed_results = set()  # Evita repetir alertas de resultados ya enviados
+pinned_summary_message_id = None  # ID del mensaje fijado con la tabla
+daily_results_table = {}  # Almacena los resultados por hora y lotería para la tabla
 
 
-# 1. TASA BCV (6:30 AM y 6:30 PM)
-def send_bcv_rate():
+def send_message(text, chat_id=CHANNEL_ID):
   try:
-    mensaje = (
-        "💵 TASA OFICIAL BCV 💵\n\n"
-        "🏦 Moneda: Dólar Estadounidense\n"
-        "📈 Precio Oficial: Bs. 742,23\n\n"
-        "🔗 Fuente: Banco Central de Venezuela\n"
-        "🌐 https://www.bcv.org.ve/"
+    res = bot.send_message(
+        chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=False
     )
-    bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+    return res.message_id
   except Exception as e:
-    print(f"Error BCV: {e}")
+    print(f"Error enviando mensaje: {e}")
+    return None
 
 
-# 2. PIRÁMIDE TÁCTICA (6:31 AM)
+# ==========================================
+# 1. GENERADOR DE LA PIRÁMIDE TÁCTICA (6:31 AM)
+# ==========================================
+
+
 def generate_pyramid(date_str):
   digits = [int(c) for c in date_str if c.isdigit()]
   rows = [digits]
@@ -56,57 +42,78 @@ def generate_pyramid(date_str):
     ]
     rows.append(next_row)
 
-  pyramid_text = ""
-  for idx, row in enumerate(rows):
-    indent = "  " * idx
-    row_str = "  ".join(str(n) for n in row)
-    pyramid_text += f"{indent}{row_str}\n"
-  return pyramid_text
+  pyramid_lines = []
+  total_rows = len(rows)
+  for i, row in enumerate(rows):
+    spaces = "  " * (total_rows - i - 1)
+    formatted_row = "  ".join(str(d) for d in row)
+    pyramid_lines.append(f"{spaces}... {formatted_row} ...")
+  return "\n".join(pyramid_lines)
 
 
-def send_tactical_pyramid():
-  today_str = datetime.now().strftime("%d/%m/%Y")
-  pyramid_art = generate_pyramid(today_str)
-  mensaje = (
-      "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
-      "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
-      f"📅 Fecha: {today_str}\n"
-      "Análisis matemático actualizado y listo para la jugada. ¡A asegurar"
-      " posición:\n\n"
-      f"{pyramid_art}\n"
-      "🔥 DATOS CLAVES PARA HOY:\n"
-      "📌 25-13-07\n"
-      "📌 35-20-02\n\n"
-      "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza"
-      " y gana con nosotros! 🍀 💰"
-  )
-  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+# ==========================================
+# 2. MENSAJES PROGRAMADOS FIJOS
+# ==========================================
 
 
-# 3. BUENOS DÍAS (7:00 AM)
-def send_good_morning():
-  mensaje = (
-      "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-      "🌅 ¡Buenos días a todos! 🌅\n\n"
+def job_good_morning():
+  # Limpiar memoria al iniciar un nuevo día
+  global processed_results, pinned_summary_message_id, daily_results_table
+  processed_results.clear()
+  pinned_summary_message_id = None
+  daily_results_table.clear()
+
+  text = (
+      "🎯 <b>AGENCIA HAROLD JOSE</b> 🎯\n\n"
+      "🌅 <b>¡Buenos días a todos!</b> 🌅\n\n"
       "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos"
       " compartiendo todos los resultados de los animalitos a medida que vayan"
       " saliendo.\n\n"
-      "📢 Nuestros canales oficiales:\n"
+      "📢 <b>Nuestros canales oficiales:</b>\n"
       "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
       "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
       "💬 Canal de WhatsApp:"
       " https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
       "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
   )
-  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+  send_message(text)
 
 
-# 4. AVISO IMPORTANTE (10:00 AM, 2:00 PM, 5:00 PM)
-def send_important_notice():
-  mensaje = (
-      "🎯 AGENCIA HAROLD JOSE 🎯\n"
+def job_bcv():
+  text = (
+      "💵 <b>TASA OFICIAL BCV</b> 💵\n\n"
+      "🏦 Moneda: Dólar Estadounidense\n"
+      "📈 Precio Oficial: Bs. 742,23\n\n"
+      "🔗 Fuente: Banco Central de Venezuela\n"
+      "🌐 https://www.bcv.org.ve/"
+  )
+  send_message(text)
+
+
+def job_pyramid():
+  today = datetime.now().strftime("%d/%m/%Y")
+  art = generate_pyramid(today)
+  text = (
+      "🎯 <b>CENTRO DE APUESTAS HAROLD JOSÉ</b> 🎯\n"
+      "📢 <b>REPORTE TÁCTICO - LA PIRÁMIDE</b> 📢\n\n"
+      f"📅 <b>Fecha:</b> {today}\n"
+      "Análisis matemático actualizado y listo para la jugada. ¡A asegurar"
+      " posición:\n\n"
+      f"{art}\n\n"
+      "🔥 <b>DATOS CLAVES PARA HOY:</b>\n"
+      "📌 25-13-07\n"
+      "📌 35-20-02\n\n"
+      "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza"
+      " y gana con nosotros! 🍀 💰"
+  )
+  send_message(text)
+
+
+def job_important_notice():
+  text = (
+      "🎯 <b>AGENCIA HAROLD JOSE</b> 🎯\n"
       "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
-      "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
+      "📢 <b>¡AVISO IMPORTANTE PARA NUESTROS JUGADORES!</b> 📢\n\n"
       "Recuerda que para jugar con nosotros debes acceder primero al Canal de"
       " WhatsApp para verificar si la taquilla se encuentra activa el día de"
       " hoy:\n"
@@ -118,80 +125,121 @@ def send_important_notice():
       "👉 t.me/ag_haroldjose\n\n"
       "¡Mucha suerte en sus jugadas! 🍀🔥"
   )
-  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+  send_message(text)
 
 
-# 5. AVISO DE POLLAS (Minuto 10 de cada hora)
-def send_pollas_notice():
-  mensaje = (
-      "🔥 ¡Ya se subieron o ya se actualizó el canal con las pollas de este"
-      " sorteo! No te pierdas de los sorteos de las pollas, puedes verlo aquí"
-      " 👇🏻\nhttps://t.me/pollasydupletas"
+def job_polls():
+  text = (
+      "🔥 <b>¡Ya se subieron o ya se actualizó el canal con las pollas de este"
+      " sorteo!</b> No te pierdas de los sorteos de las pollas, puedes verlo"
+      " aquí 👇🏻\nhttps://t.me/pollasydupletas"
   )
-  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+  send_message(text)
 
 
-# 6. CIERRE DE JORNADA (9:10 PM)
-def send_night_closing():
-  mensaje = (
-      "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-      "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
+def job_closing():
+  text = (
+      "🎯 <b>AGENCIA HAROLD JOSE</b> 🎯\n\n"
+      "🌙 <b>¡FINAL DE JORNADA!</b> 🌙\n\n"
       "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con"
       " nosotros! Los esperamos el día de mañana con mucha más suerte y"
       " energía. 🍀✨"
   )
-  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+  send_message(text)
 
 
-# 7. SCRAPING Y RESULTADOS (Minuto 10 de cada hora)
-def fetch_and_post_results():
-  global pinned_summary_message_id
-  url_principal = "https://lotery.winbigvzla.com/resultados"
+# ==========================================
+# 3. MONITOREO Y FASE DE RESUMEN ACUMULATIVO
+# ==========================================
+
+
+def check_and_process_results():
+  global pinned_summary_message_id, daily_results_table
+  url = "https://lotery.winbigvzla.com/resultados"
+
   try:
-    response = requests.get(url_principal, timeout=10)
+    response = requests.get(url, timeout=15)
     if response.status_code != 200:
+      print("[!] Error al conectar con la web de resultados principal.")
       return
 
     soup = BeautifulSoup(response.text, "html.parser")
-    resultados_detectados = []
 
-    for res in resultados_detectados:
-      if "RULETA ROYAL" in res["lottery"].upper():
+    # --- SIMULACIÓN DE EXTRACCIÓN DE RESULTADOS DE LA PÁGINA ---
+    # Aquí el parser lee la tabla o elementos web de winbigvzla.
+    # Ejemplo de elementos detectados en este ciclo de hora:
+    nuevos_resultados_detectados = [
+        # {"lottery": "LOTTO ACTIVO", "time": "09:00 AM", "number": "11", "animal": "GATO"}
+    ]
+
+    for item in nuevos_resultados_detectados:
+      lottery_name = item["lottery"].strip().upper()
+
+      # Excluir Ruleta Royal estrictamente
+      if "RULETA ROYAL" in lottery_name:
         continue
 
-      mensaje_individual = (
-          "🎯 AG HAROLD JOSE 🎯\n\n"
-          f"🎰 {res['lottery']}\n"
-          f"🕒 {res['time']}  {res['number']} - {res['animal']}\n"
-          "https://t.me/resultadosagharoldjose"
-      )
-      bot.send_message(chat_id=CHANNEL_ID, text=mensaje_individual)
-      update_cumulative_dashboard(res)
+      # Identificador único para saber si ya mandamos este resultado individual
+      result_key = f"{item['time']}_{lottery_name}_{item['number']}"
+
+      if result_key not in processed_results:
+        processed_results.add(result_key)
+
+        # FASE 1: Alerta Individual Instantánea al Canal
+        individual_msg = (
+            "🎯 <b>AG HAROLD JOSE</b> 🎯\n\n"
+            f"🎰 <b>{lottery_name}</b>\n"
+            f"🕒 {item['time']}  {item['number']} - {item['animal']}\n"
+            "https://t.me/resultadosagharoldjose"
+        )
+        send_message(individual_msg)
+
+        # FASE 2: Agregar a la estructura de la Tabla Acumulativa
+        time_slot = item["time"]
+        if time_slot not in daily_results_table:
+          daily_results_table[time_slot] = {}
+        daily_results_table[time_slot][lottery_name] = (
+            f"{item['number']} {item['animal']}"
+        )
+
+        # Actualizar o Crear el Mensaje Fijado Acumulativo
+        update_cumulative_dashboard_message()
 
   except Exception as e:
-    print(f"Error scraping: {e}")
+    print(f"[X] Excepción en scraping: {e}")
 
 
-def update_cumulative_dashboard(new_result):
+def update_cumulative_dashboard_message():
   global pinned_summary_message_id
+
+  # Construir la tabla con las horas acumuladas hasta el momento
+  table_rows = ""
+  for t_slot in sorted(daily_results_table.keys()):
+    lotto_val = daily_results_table[t_slot].get("LOTTO ACTIVO", "---")
+    guach_val = daily_results_table[t_slot].get("GUACHARO ACTIVO", "---")
+    chaim_val = daily_results_table[t_slot].get("LOTO CHAIMA", "---")
+    table_rows += f"<b>{t_slot}</b> | {lotto_val} | {guach_val} | {chaim_val}\n"
+
   dashboard_text = (
-      "📊 <b>TABLA RESUMEN ACUMULATIVA - RESULTADOS DEL DÍA</b> 📊\n\n"
-      "HORA  | LOTTO ACTIVO | GUACHARO | CHAIMA\n"
-      "------------------------------------------\n"
-      "08:00 | 20 🐷        | 10 🐅    | 09 🦅\n"
-      f"<i>Actualizado: {new_result['lottery']} ({new_result['time']}) ->"
-      f" {new_result['number']} {new_result['animal']}</i>"
+      "📊 <b>TABLA RESUMEN ACUMULATIVA - RESULTADOS DEL DÍA</b> 📊\n"
+      "<i>Actualizándose automáticamente a medida que transcurre el"
+      " día...</i>\n\n"
+      "<b>HORA  | LOTTO ACTIVO | GUACHARO | CHAIMA</b>\n"
+      "--------------------------------------------------\n"
+      f"{table_rows if table_rows else 'Esperando primeros resultados...'}"
   )
+
   try:
     if pinned_summary_message_id is None:
-      sent_msg = bot.send_message(
-          chat_id=CHANNEL_ID, text=dashboard_text, parse_mode="HTML"
-      )
-      pinned_summary_message_id = sent_msg.message_id
-      bot.pin_chat_message(
-          chat_id=CHANNEL_ID, message_id=pinned_summary_message_id
-      )
+      # Si es el primer resultado del día, enviamos el mensaje y lo fijamos
+      msg_id = send_message(dashboard_text)
+      if msg_id:
+        pinned_summary_message_id = msg_id
+        bot.pin_chat_message(
+            chat_id=CHANNEL_ID, message_id=pinned_summary_message_id
+        )
     else:
+      # Si ya existe el mensaje fijado, EDITAMOS el mismo mensaje existente con la nueva fila
       bot.edit_message_text(
           chat_id=CHANNEL_ID,
           message_id=pinned_summary_message_id,
@@ -199,34 +247,5 @@ def update_cumulative_dashboard(new_result):
           parse_mode="HTML",
       )
   except TelegramError as e:
-    print(f"Error dashboard: {e}")
-
-
-# ==========================================
-# PLANIFICADOR Y EJECUCIÓN
-# ==========================================
-if __name__ == "__main__":
-  # Iniciar Flask en un hilo secundario para Render
-  t = Thread(target=run_flask)
-  t.start()
-
-  # Configurar horarios
-  schedule.every().day.at("06:30").do(send_bcv_rate)
-  schedule.every().day.at("06:31").do(send_tactical_pyramid)
-  schedule.every().day.at("07:00").do(send_good_morning)
-
-  schedule.every().day.at("10:00").do(send_important_notice)
-  schedule.every().day.at("14:00").do(send_important_notice)
-  schedule.every().day.at("17:00").do(send_important_notice)
-
-  schedule.every().day.at("18:30").do(send_bcv_rate)
-  schedule.every().day.at("21:10").do(send_night_closing)
-
-  schedule.every().hour.at(":10").do(fetch_and_post_results)
-  schedule.every().hour.at(":10").do(send_pollas_notice)
-
-  print("Bot en marcha en Render...")
-  while True:
-    schedule.run_pending()
-    time.sleep(1)
-    
+    print(f"[X] Error actualizando el mensaje fijado acumulativo: {e}")
+  
