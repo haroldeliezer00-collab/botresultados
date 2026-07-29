@@ -129,6 +129,8 @@ ANIMAL_DATA = {
 }
 
 results_storage = {}
+resultados_enviados = set()
+primera_ejecucion = True
 
 # --- ENCABEZADO SIMPLIFICADO Y LIMPIO ---
 HEADER_TEXT = (
@@ -166,12 +168,6 @@ def home():
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal @pruebajsj!<br>"
         f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b>"
     )
-
-resultados_enviados = set()
-primera_ejecucion = True
-
-def limpiar_texto(texto):
-    return " ".join(texto.split())
 
 def enviar_telegram(mensaje, disable_web_preview=True):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -327,7 +323,7 @@ def formatear_hora_tabla(h_str):
     except:
         return h_str
 
-# --- CONSTRUCCIÓN DE TABLA COMPACTA (UNA SOLA LÍNEA POR GRUPO) ---
+# --- CONSTRUCCIÓN DE TABLA COMPACTA ---
 def build_table_message():
     hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
 
@@ -366,7 +362,6 @@ def build_table_message():
     return text
 
 def enviar_tabla_resultados():
-    # Solo enviar la tabla si estamos dentro del horario operativo (8 AM a 8 PM)
     hora_actual = datetime.now().hour
     if 8 <= hora_actual <= 20:
         try:
@@ -374,7 +369,7 @@ def enviar_tabla_resultados():
         except Exception as e:
             print(f"⚠️ Error tabla: {e}")
 
-# --- RASPADO AISLADO POR CADA CONTENEDOR DE LOTERÍA ---
+# --- RASPADO AISLADO Y ENVÍO INMEDIATO DE RESULTADOS INDIVIDUALES ---
 def verificar_resultados():
     global resultados_enviados, primera_ejecucion, results_storage
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
@@ -386,56 +381,78 @@ def verificar_resultados():
         
         soup = BeautifulSoup(resp.text, 'html.parser')
         
-        # Buscar tarjetas o bloques individuales de cada lotería en la página
-        contenedores = soup.find_all(['div', 'section', 'article'], class_=re.compile(r'card|box|lottery|panel|content|item', re.IGNORECASE))
-        if not contenedores:
-            contenedores = [soup]
+        # Buscar cada tarjeta/bloque principal de lotería en la página por separado
+        tarjetas = soup.find_all(['div', 'section', 'article'], class_=re.compile(r'card|box|lottery|panel|item', re.IGNORECASE))
+        if not tarjetas:
+            tarjetas = [soup]
 
-        for cont in contenedores:
-            texto_cont = cont.get_text(" ", strip=True)
+        for tarjeta in tarjetas:
+            # Identificar el título específico de ESTA tarjeta de lotería
+            titulo_elem = tarjeta.find(['h1', 'h2', 'h3', 'h4', 'div', 'span'], class_=re.compile(r'title|name|header', re.IGNORECASE))
+            texto_titulo = titulo_elem.get_text(" ", strip=True) if titulo_elem else ""
             
-            # Identificar a qué lotería pertenece este bloque específico
-            loteria_encontrada = None
-            for key_oficial in ABBR_MAP.keys():
-                if normalizar_cadena(key_oficial) in normalizar_cadena(texto_cont[:120]) or \
-                   any(alias in normalizar_cadena(texto_cont[:120]) for alias, std in ALIAS_LOTERIA.items() if std == key_oficial):
-                    loteria_encontrada = key_oficial
-                    break
+            loteria_encontrada = obtener_clave_estandar(texto_titulo)
             
-            if not loteria_encontrada:
-                header_tag = cont.find(['h1', 'h2', 'h3', 'h4', 'strong', 'b'])
-                if header_tag:
-                    loteria_encontrada = obtener_clave_estandar(header_tag.get_text())
+            if loteria_encontrada not in ABBR_MAP:
+                texto_tarjeta_completo = tarjeta.get_text(" ", strip=True)[:150]
+                for key_oficial in ABBR_MAP.keys():
+                    if normalizar_cadena(key_oficial) in normalizar_cadena(texto_tarjeta_completo):
+                        loteria_encontrada = key_oficial
+                        break
 
-            if loteria_encontrada and loteria_encontrada in ABBR_MAP:
-                # Extraer filas o elementos de hora y número únicamente DENTRO de este bloque
-                filas = cont.find_all(['div', 'li', 'tr', 'p', 'span'], class_=re.compile(r'item|row|slot|result|hora|data', re.IGNORECASE))
-                if not filas:
-                    filas = [cont]
+            # Si logramos identificar la lotería de esta tarjeta, leemos sus horas y resultados internos
+            if loteria_encontrada in ABBR_MAP:
+                bloques_horas = tarjeta.find_all(['div', 'li', 'tr', 'p', 'span'], class_=re.compile(r'item|row|slot|result|hora|data', re.IGNORECASE))
+                if not bloques_horas:
+                    bloques_horas = [tarjeta]
 
-                for fila in filas:
-                    t_texto = fila.get_text(" ", strip=True).upper()
+                for b_hora in bloques_horas:
+                    t_texto = b_hora.get_text(" ", strip=True).upper()
                     if "PENDIENTE" in t_texto:
                         continue
+                    
                     match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', t_texto)
-                    match_res = re.search(r'\b(\d{1,2})\b', t_texto)
-                    if match_h and match_res:
-                        hora_norm = normalizar_hora_tabla(match_h.group(1))
-                        num_val = match_res.group(1).zfill(2)
-                        if hora_norm and int(num_val) <= 36:
-                            animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
-                            if hora_norm not in results_storage:
-                                results_storage[hora_norm] = {}
+                    if match_h:
+                        # Excluimos la hora del texto para evitar que los números de la hora (ej. 08 o 00) se confundan con el animalito
+                        texto_sin_hora = t_texto.replace(match_h.group(1), "")
+                        match_res = re.search(r'\b(0[0-9]|[1-2][0-9]|3[0-6])\b', texto_sin_hora)
+                        
+                        if match_res:
+                            hora_norm = normalizar_hora_tabla(match_h.group(1))
+                            num_val = match_res.group(1).zfill(2)
                             
-                            # Guardado estricto e independiente por lotería
-                            results_storage[hora_norm][loteria_encontrada] = {'num': num_val, 'info': animal_info}
+                            if hora_norm and int(num_val) <= 36:
+                                animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
+                                
+                                # Guardar en memoria para la tabla
+                                if hora_norm not in results_storage:
+                                    results_storage[hora_norm] = {}
+                                results_storage[hora_norm][loteria_encontrada] = {'num': num_val, 'info': animal_info}
+                                
+                                # --- ENVÍO INMEDIATO DEL RESULTADO INDIVIDUAL ---
+                                key_res = f"{loteria_encontrada}_{hora_norm}_{num_val}"
+                                if key_res not in resultados_enviados and not primera_ejecucion:
+                                    resultados_enviados.add(key_res)
+                                    h_display = formatear_hora_tabla(hora_norm)
+                                    msg_individual = (
+                                        "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
+                                        "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n\n"
+                                        f"🎯 *RESULTADO OFICIAL* 🎯\n"
+                                        f"🏛️ *Lotería:* {loteria_encontrada}\n"
+                                        f"⏰ *Hora:* {h_display}\n"
+                                        f"🎲 *Animal:* *{num_val}* - {animal_info[0]} {animal_info[1]}\n\n"
+                                        "📲 JUEGA AQUI WHATSAPP: 04124489363"
+                                    )
+                                    enviar_telegram(msg_individual, disable_web_preview=True)
+                                elif key_res not in resultados_enviados:
+                                    resultados_enviados.add(key_res)
 
     except Exception as e:
         print(f"⚠️ Error en raspado: {e}")
 
     if primera_ejecucion:
         primera_ejecucion = False
-        print("🚀 Sincronización inicial completada.")
+        print("🚀 Sincronización inicial completada (resultados previos cacheados sin spam).")
 
 def loop_bot():
     verificar_resultados()
@@ -451,7 +468,6 @@ def loop_bot():
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
 
-    # Envío automático de la tabla cada hora al minuto 10 (restringido de 8 AM a 8 PM)
     schedule.every().hour.at(":10").do(enviar_tabla_resultados)
     schedule.every(2).minutes.do(verificar_resultados)
 
