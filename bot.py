@@ -309,7 +309,6 @@ def enviar_aviso_taquilla():
     )
 
 def actualizar_mensaje_resumen():
-    """Crea o edita el mensaje principal fijado en el canal con la tabla acumulativa del día."""
     global resumen_message_id, lista_resultados_dia
     if not lista_resultados_dia:
         return
@@ -328,7 +327,6 @@ def actualizar_mensaje_resumen():
 
     try:
         if resumen_message_id:
-            # Editar el mensaje existente en el canal
             bot.edit_message_text(
                 chat_id=CANAL,
                 message_id=resumen_message_id,
@@ -338,7 +336,6 @@ def actualizar_mensaje_resumen():
             )
             print("📝 Mensaje resumen acumulativo actualizado correctamente en el canal.")
         else:
-            # Si no existe, enviarlo nuevo y fijarlo (Pin)
             msg = bot.send_message(
                 chat_id=CANAL,
                 text=texto,
@@ -353,7 +350,6 @@ def actualizar_mensaje_resumen():
                 print(f"⚠️ No se pudo fijar el mensaje resumen: {pin_err}")
     except Exception as e:
         print(f"⚠️ Error al actualizar/enviar mensaje resumen acumulativo: {e}")
-        # Si el mensaje fue borrado manualmente, creamos uno nuevo
         try:
             msg = bot.send_message(
                 chat_id=CANAL,
@@ -367,7 +363,6 @@ def actualizar_mensaje_resumen():
             print(f"⚠️ Error crítico al recrear el mensaje resumen: {e2}")
 
 def tarea_minuto_diez():
-    """Ejecutado al minuto 10 de cada hora: Manda aviso de pollas y fuerza actualización del resumen acumulativo."""
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n📢 ¡Pollas actualizadas!\n"
         "Puedes verlas aquí 👇🏻\nhttps://t.me/pollasydupletas\n\n¡Mucho éxito! 🍀",
@@ -443,7 +438,6 @@ def verificar_resultados():
 
                 if primera_ejecucion:
                     resultados_enviados.add(clave)
-                    # Añadir también al acumulativo inicial si ya salieron en la primera lectura del día
                     item_dict = {'loteria': nombre_loteria, 'hora': hora, 'resultado': resultado_final}
                     if item_dict not in lista_resultados_dia:
                         lista_resultados_dia.append(item_dict)
@@ -473,7 +467,6 @@ def verificar_resultados():
                 enviar_telegram(mensaje, disable_web_preview=True)
                 time.sleep(3)
             
-            # Actualizar el mensaje resumen fijado en el canal con los nuevos resultados
             actualizar_mensaje_resumen()
 
     except Exception as e:
@@ -490,7 +483,6 @@ def loop_bot():
     schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
     schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
     
-    # Minuto 10: Envía aviso de pollas y actualiza la tabla resumen acumulativa fijada
     schedule.every().hour.at(":10").do(tarea_minuto_diez)
 
     schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
@@ -523,4 +515,5 @@ if __name__ == '__main__':
     t_bot.daemon = True
     t_bot.start()
 
-    port = int(os.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
