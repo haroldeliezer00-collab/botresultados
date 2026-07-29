@@ -558,4 +558,44 @@ def loop_bot():
     verificar_resultados()
     schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
     schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
-    schedule.every().day.at("06:31").
+    schedule.every().day.at("06:31").do(enviar_piramide_diaria)
+    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
+    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
+    schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
+    schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
+    schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
+    
+    schedule.every().hour.at(":10").do(tarea_minuto_diez)
+
+    schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
+    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
+    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
+    schedule.every(1).minute.do(verificar_resultados)
+
+    while True:
+        try:
+            schedule.run_pending()
+        except Exception as e:
+            print(f"Error en schedule: {e}")
+        time.sleep(1)
+
+def iniciar_polling_bot():
+    while True:
+        try:
+            bot.infinity_polling(skip_pending=True, interval=3, timeout=20)
+        except Exception as e:
+            print(f"⚠️ Error en polling de Telegram: {e}")
+            traceback.print_exc()
+            time.sleep(5)
+
+if __name__ == '__main__':
+    t_schedule = Thread(target=loop_bot)
+    t_schedule.daemon = True
+    t_schedule.start()
+
+    t_bot = Thread(target=iniciar_polling_bot)
+    t_bot.daemon = True
+    t_bot.start()
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
