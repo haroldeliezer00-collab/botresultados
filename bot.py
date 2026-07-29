@@ -1,626 +1,232 @@
-import os
-# Forzar la zona horaria de Venezuela para que el bot use la hora local exacta
-os.environ['TZ'] = 'America/Caracas'
-try:
-    import time
-    time.tzset()
-except AttributeError:
-    pass # Compatible por si se prueba en Windows local
-
+from threading import Thread
+import time
+from datetime import datetime
+from flask import Flask
+import schedule
 import requests
 from bs4 import BeautifulSoup
-import time
-import schedule
-from threading import Thread
-from flask import Flask, render_template_string
-import re
-import urllib3
-from datetime import datetime
-import random
-import telebot
-import unicodedata
+from telegram import Bot
+from telegram.error import TelegramError
 
-# Desactivar advertencias de certificados SSL por seguridad con páginas del Estado
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# Credenciales y canal principal configurados correctamente
-TOKEN = '8698848083:AAGa5S9cBp_E8UYSMskNDiC76P3qLY12HJA'
-CANAL = '@pruebajsj'
-
-bot = telebot.TeleBot(TOKEN)
-
-URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
-URL_BCV = 'https://www.bcv.org.ve/'
-
-# --- FUNCIÓN PARA REMOVER ACENTOS Y NORMALIZAR TEXTO ---
-def normalizar_cadena(texto):
-    if not texto:
-        return ""
-    texto_norm = unicodedata.normalize('NFD', str(texto))
-    texto_sin_acentos = "".join(c for c in texto_norm if unicodedata.category(c) != 'Mn')
-    return texto_sin_acentos.upper().strip()
-
-# --- MAPA DE ALIAS PARA MAPEAR NOMBRES WEB A LA TABLA ---
-ALIAS_LOTERIA = {
-    "LA GRANJITA": "La Granjita",
-    "GRANJITA": "La Granjita",
-    "LOTTO ACTIVO": "Lotto Activo",
-    "SELVA PLUS": "Selva Plus",
-    "SELVA": "Selva Plus",
-    "GUACHARO ACTIVO": "Guácharo Activo",
-    "GUACHARO": "Guácharo Activo",
-    "EL GUACHARO": "Guácharo Activo",
-    "LOTO CHAIMA": "Loto Chaima",
-    "CHAIMA": "Loto Chaima",
-    "MONJE MILLONARIO": "Monje Millonario",
-    "MONJE": "Monje Millonario",
-    "EL MONJE": "Monje Millonario",
-    "LOTTO ANIMALITO": "Lotto Animalito",
-    "ANIMALITO": "Lotto Animalito",
-    "LOTTO PANTERA": "Lotto Pantera",
-    "PANTERA": "Lotto Pantera",
-    "LOTTO REAL": "Lotto Real",
-    "REAL": "Lotto Real",
-    "LOTTO RD": "Lotto Rd",
-    "CENTENA ANIMALITOS": "Centena Animalitos",
-    "MEGA ANIMAL": "Mega Animal",
-    "RULETON PERU": "Ruleton Perú",
-    "RULETON COLOMBIA": "Ruleton Colombia",
-    "RULETON VENEZUELA": "Ruleton Venezuela",
-    "CONDOR GANA": "Cóndor Gana",
-    "FRUTI GANA": "Fruti Gana",
-    "TROPI GANA": "Tropi Gana",
-    "GRANJA MILLONARIA": "Granja Millonaria",
-    "ZOOLOGICO ACTIVO": "Zoológico Activo",
-    "LOTTO MAX": "Lotto Max"
-}
-
-# --- DICCIONARIOS Y CONFIGURACIÓN PARA LA TABLA DE RESULTADOS ---
-ABBR_MAP = {
-    "La Granjita": "GRAJ",
-    "Lotto Activo": "L.ACT",
-    "Selva Plus": "SELV",
-    "Guácharo Activo": "G.ARO",
-    "Loto Chaima": "CHAIMA",
-    "Monje Millonario": "MONJE",
-    "Lotto Animalito": "L.ANI",
-    "Lotto Pantera": "L.PAN",
-    "Lotto Real": "L.REA",
-    "Lotto Rd": "L.RD",
-    "Centena Animalitos": "C.ANI",
-    "Mega Animal": "MEGA",
-    "Ruleton Perú": "R.PER",
-    "Ruleton Colombia": "R.COL",
-    "Ruleton Venezuela": "R.VEN",
-    "Cóndor Gana": "COND",
-    "Fruti Gana": "FRUT",
-    "Tropi Gana": "TROP",
-    "Granja Millonaria": "G.MIL",
-    "Zoológico Activo": "ZOOL",
-    "Lotto Max": "L.MAX"
-}
-
-def obtener_clave_estandar(nombre_raw):
-    norm = normalizar_cadena(nombre_raw)
-    if norm in ALIAS_LOTERIA:
-        return ALIAS_LOTERIA[norm]
-    for alias, key_std in ALIAS_LOTERIA.items():
-        if alias in norm or norm in alias:
-            return key_std
-    for lot_key in ABBR_MAP.keys():
-        if normalizar_cadena(lot_key) in norm or norm in normalizar_cadena(lot_key):
-            return lot_key
-    return nombre_raw
-
-ANIMAL_DATA = {
-    "00": ("BALLENA", "🐳"), "0": ("DELFIN", "🐬"), "1": ("CARNERO", "🐏"), 
-    "2": ("TORO", "🐂"), "3": ("CIEMPIES", "🐛"), "4": ("ALACRAN", "🦂"), 
-    "5": ("LEON", "🦁"), "6": ("RATON", "🐭"), "7": ("CANARIO", "🐦"), 
-    "8": ("TIBURON", "🦈"), "9": ("AGUILA", "🦅"), "10": ("TIGRE", "🐅"), 
-    "11": ("GATO", "🐈"), "12": ("CABALLO", "🐎"), "13": ("MONO", "🐒"), 
-    "14": ("PALOMA", "🕊️"), "15": ("ZORRO", "🦊"), "16": ("OSO", "🐻"), 
-    "17": ("PAVO", "🦃"), "18": ("BURRO", "🫏"), "19": ("CHIVO", "🐐"), 
-    "20": ("COCHINO", "🐖"), "21": ("GALLO", "🐓"), "22": ("CAMELLO", "🐪"), 
-    "23": ("ZEBRA", "🦓"), "24": ("IGUANA", "🦎"), "25": ("GALLINA", "🐔"), 
-    "26": ("VACA", "🐄"), "27": ("PERRO", "🐕"), "28": ("ZAMURO", "🦅"), 
-    "29": ("ELEFANTE", "🐘"), "30": ("CAIMAN", "🐊"), "31": ("JIRAFA", "🦒"), 
-    "32": ("CULEBRA", "🐍"), "33": ("PESCADO", "🐟"), "34": ("VENADO", "🦌"), 
-    "35": ("JIBARO", "🐗"), "36": ("CULEBRA", "🐍")
-}
-
-results_storage = {}
-resultados_enviados = set()
-primera_ejecucion = True
-
-HEADER_TEXT = (
-    "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
-    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n"
-    "📲 JUEGA AQUI WHATSAPP: 04124489363\n\n"
-    "📊 𝗥𝙴𝚂𝚄𝙻𝚃𝙰𝙳𝙾𝚂 𝙰𝙽𝙸𝙼𝙰𝙻𝙸𝚃𝙾𝚂 📊\n"
-    "------------------------"
-)
-
-# Variables de estado diario para la Taquilla
-taquilla_activa_hoy = False
-imagen_activa_id = None
-ultimo_id_foto_canal = None
-
-TEXTO_TAQUILLA = (
-    "✅ AG HAROLD JOSÉ ACTIVA ✅\n"
-    "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
-    "📲 Envía tus jugadas:\n"
-    "(Comprobante de pago / Lotería / monto / Hora)\n\n"
-    "📖 Consulta nuestro reglamento aquí:\n"
-    "https://wa.me/p/33319103291071105/584124489363\n"
-    "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
-    "RESULTADOS AUTOMÁTICOS\n"
-    "https://t.me/pruebajsj\n\n"
-    "¡Mucho éxito en la jornada de hoy! 🍀✨"
-)
-
+# Mini servidor Flask para mantener el bot activo en Render
 app = Flask('')
+
 
 @app.route('/')
 def home():
-    estado_texto = "ACTIVA" if taquilla_activa_hoy else "INACTIVA"
-    color_estado = "green" if taquilla_activa_hoy else "red"
-    return (
-        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal @pruebajsj!<br>"
-        f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
-        "<b>Enlaces de prueba rápida (Test):</b><br>"
-        "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
-        "👉 <a href='/test/piramide'>Probar Pirámide Numérica (6:31 AM)</a><br>"
-        "👉 <a href='/test/bcv'>Probar Tasa BCV (6:30 AM / 6:30 PM)</a><br>"
-        "👉 <a href='/test/saludo'>Probar Saludo Matutino (7:00 AM)</a><br>"
-        "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla (10 AM, 2 PM, 5 PM)</a><br>"
-        "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a><br>"
-        "👉 <a href='/test/cierre'>Probar Mensaje de Cierre (9:10 PM)</a><br>"
-        "👉 <a href='/test-refuerzo'>Probar Refuerzo de Taquilla (Tarde)</a>"
-    )
+  return "Bot de Agencia Harold José activo 🚀"
 
-# --- RUTAS DE PRUEBA MANUAL (TEST) ---
-@app.route('/test/madrugada')
-def test_madrugada():
-    enviar_saludo_madrugada()
-    return "¡Prueba ejecutada! Se envió el saludo de madrugada al canal."
 
-@app.route('/test/piramide')
-def test_piramide():
-    enviar_piramide_diaria()
-    return "¡Prueba ejecutada! Se envió la pirámide numérica al canal."
+def run_flask():
+  app.run(host='0.0.0.0', port=10000)
 
-@app.route('/test/bcv')
-def test_bcv():
-    enviar_tasa_dolar()
-    return "¡Prueba ejecutada! Se envió la tasa del BCV al canal."
 
-@app.route('/test/saludo')
-def test_saludo():
-    enviar_saludo_matutino()
-    return "¡Prueba ejecutada! Se envió el saludo matutino al canal."
+# Configuración del Bot de Telegram
+TOKEN = "8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk"
+CHANNEL_ID = "@pruebajsj"
+bot = Bot(token=TOKEN)
 
-@app.route('/test/taquilla')
-def test_taquilla():
-    enviar_aviso_taquilla()
-    return "¡Prueba ejecutada! Se envió el aviso de taquilla al canal."
+pinned_summary_message_id = None
 
-@app.route('/test/resultados')
-def test_resultados():
-    verificar_resultados()
-    return "¡Prueba ejecutada! Se forzó la revisión de resultados."
 
-@app.route('/test/cierre')
-def test_cierre():
-    enviar_mensaje_cierre()
-    return "¡Prueba ejecutada! Se envió el mensaje de cierre al canal."
-
-@app.route('/test-refuerzo')
-def test_refuerzo():
-    tarea_refuerzo_tarde()
-    return "Prueba de refuerzo ejecutada manualmente."
-# ------------------------------------
-
-def enviar_telegram(mensaje, disable_web_preview=True):
-    """Función centralizada para enviar mensajes al canal oficial."""
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CANAL, 
-        "text": mensaje, 
-        "parse_mode": "Markdown", 
-        "disable_web_page_preview": disable_web_preview
-    }
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code != 200:
-            print(f"⚠️ Error al enviar al canal: {response.text}")
-    except Exception as e:
-        print(f"⚠️ Excepción de conexión con Telegram: {e}")
-
-def limpiar_memoria_diaria():
-    global resultados_enviados, primera_ejecucion, taquilla_activa_hoy, imagen_activa_id, ultimo_id_foto_canal, results_storage
-    resultados_enviados.clear()
-    results_storage.clear()
-    primera_ejecucion = True
-    taquilla_activa_hoy = False
-    imagen_activa_id = None
-    ultimo_id_foto_canal = None
-    print("🧹 Memoria de resultados y estado de taquilla limpiados para arrancar el nuevo día.")
-
-# --- DETECTOR AUTOMÁTICO DE TAQUILLA ACTIVA DESDE EL CANAL ---
-def activar_taquilla_proceso():
-    global taquilla_activa_hoy, imagen_activa_id
-    if not imagen_activa_id:
-        return
-    taquilla_activa_hoy = True
-    print(f"¡Taquilla activada manualmente desde el canal!")
-    try:
-        bot.send_photo(
-            chat_id=CANAL,
-            photo=imagen_activa_id,
-            caption=TEXTO_TAQUILLA
-        )
-        print("Mensaje de taquilla activa enviado al canal con éxito.")
-    except Exception as e:
-        print(f"Error al enviar la taquilla al canal: {e}")
-
-@bot.channel_post_handler(content_types=['photo'])
-def capturar_foto_canal(message):
-    global ultimo_id_foto_canal, imagen_activa_id
-    if message.photo:
-        ultimo_id_foto_canal = message.photo[-1].file_id
-        
-    caption = message.caption if message.caption else ""
-    if "taquilla activa" in caption.lower():
-        imagen_activa_id = ultimo_id_foto_canal
-        activar_taquilla_proceso()
-
-@bot.channel_post_handler(content_types=['text'])
-def capturar_texto_canal(message):
-    global imagen_activa_id, ultimo_id_foto_canal
-    text = message.text if message.text else ""
-    if "taquilla activa" in text.lower():
-        if ultimo_id_foto_canal:
-            imagen_activa_id = ultimo_id_foto_canal
-            activar_taquilla_proceso()
-
-def tarea_refuerzo_tarde():
-    global taquilla_activa_hoy, imagen_activa_id
-    if taquilla_activa_hoy and imagen_activa_id:
-        print("Ejecutando refuerzo de taquilla de las 3:30 p.m.")
-        try:
-            bot.send_photo(
-                chat_id=CANAL,
-                photo=imagen_activa_id,
-                caption=TEXTO_TAQUILLA + "\n\n🔄 *¡Seguimos activos con la jornada de la tarde!*",
-                parse_mode="Markdown"
-            )
-            print("Refuerzo de las 3:30 p.m. enviado correctamente.")
-        except Exception as e:
-            print(f"Error al enviar refuerzo de tarde: {e}")
-    else:
-        print("A las 3:30 p.m. la taquilla no había sido abierta hoy, se omite el refuerzo.")
-
-def enviar_saludo_madrugada():
+# 1. TASA BCV (6:30 AM y 6:30 PM)
+def send_bcv_rate():
+  try:
     mensaje = (
-        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n"
-        "🌅 ¡Despertando con la mejor energía y listos para ganar! 🌅\n\n"
-        "Comenzamos este nuevo día activos, enfocados y con los mejores datos para asegurar cada jugada. ¡Que la suerte esté de nuestro lado desde temprano! 🍀🔥"
+        "💵 TASA OFICIAL BCV 💵\n\n"
+        "🏦 Moneda: Dólar Estadounidense\n"
+        "📈 Precio Oficial: Bs. 742,23\n\n"
+        "🔗 Fuente: Banco Central de Venezuela\n"
+        "🌐 https://www.bcv.org.ve/"
     )
-    enviar_telegram(mensaje, disable_web_preview=True)
-    print("🌅 Saludo de madrugada enviado.")
+    bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+  except Exception as e:
+    print(f"Error BCV: {e}")
 
-def generar_piramide():
-    ahora = datetime.now()
-    fecha_str = ahora.strftime("%d/%m/%Y")
-    digitos = [int(c) for c in fecha_str if c.isdigit()]
-    
-    filas = [digitos]
-    while len(filas[-1]) > 1:
-        actual = filas[-1]
-        siguiente = [(actual[i] + actual[i+1]) % 10 for i in range(len(actual) - 1)]
-        filas.append(siguiente)
-    
-    lineas_formateadas = []
-    for i, f in enumerate(filas):
-        nums_str = "  ".join(str(d) for d in f)
-        dots_count = 3 + (i * 2)
-        dots = "." * dots_count
-        lineas_formateadas.append(f"{dots}   {nums_str}   {dots}")
-    
-    cuerpo_piramide = "\n".join(lineas_formateadas)
-    
-    seed_val = int(ahora.strftime("%Y%m%d"))
-    rnd = random.Random(seed_val)
-    
-    candidates = []
-    for f in filas:
-        for idx in range(len(f) - 1):
-            val = (f[idx] * 10 + f[idx+1]) % 37
-            candidates.append(f"{val:02d}")
-        for num in f:
-            val2 = (num * 7 + idx) % 37
-            candidates.append(f"{val2:02d}")
-            
-    unique_candidates = []
-    for c in candidates:
-        if c not in unique_candidates:
-            unique_candidates.append(c)
-            
-    while len(unique_candidates) < 6:
-        val_rand = rnd.randint(0, 36)
-        c_rand = f"{val_rand:02d}"
-        if c_rand not in unique_candidates:
-            unique_candidates.append(c_rand)
-            
-    d1 = f"{unique_candidates[0]}-{unique_candidates[1]}-{unique_candidates[2]}"
-    d2 = f"{unique_candidates[3]}-{unique_candidates[4]}-{unique_candidates[5]}"
-    
-    mensaje = (
-        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
-        "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
-        f"📅 Fecha: {fecha_str}\n"
-        "Análisis matemático actualizado y listo para la jugada. ¡A asegurar posición:\n\n"
-        f"{cuerpo_piramide}\n\n"
-        "🔥 DATOS CLAVES PARA HOY:\n"
-        f"📌 {d1}\n"
-        f"📌 {d2}\n\n"
-        "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza y gana con nosotros! 🍀 💰"
-    )
-    return mensaje
 
-def enviar_piramide_diaria():
-    mensaje = generar_piramide()
-    enviar_telegram(mensaje, disable_web_preview=True)
-    print("📐 Pirámide numérica enviada.")
-
-def enviar_tasa_dolar():
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
-        response = requests.get(URL_BCV, headers=headers, timeout=15, verify=False)
-        precio_dolar = "No disponible"
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            dolar_div = soup.find('div', id='dolar')
-            if dolar_div:
-                strong_elem = dolar_div.find('strong')
-                if strong_elem:
-                    precio_dolar = strong_elem.get_text(strip=True)
-
-        mensaje = (
-            "💵 TASA OFICIAL BCV 💵\n\n"
-            "🏦 Moneda: Dólar Estadounidense\n"
-            f"📈 Precio Oficial: Bs. {precio_dolar}\n\n"
-            "🔗 Fuente: Banco Central de Venezuela"
-        )
-        enviar_telegram(mensaje, disable_web_preview=True)
-        print("💵 Tasa BCV enviada.")
-    except Exception as e:
-        print(f"⚠️ Error en tasa BCV: {e}")
-
-def enviar_saludo_matutino():
-    mensaje = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-        "🌅 ¡Buenos días a todos! 🌅\n\n"
-        "Ya arrancamos un nuevo día con la mejor energía. "
-        "Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
-        "📢 Nuestros canales oficiales:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-        "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
-        "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
-        "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
-    )
-    enviar_telegram(mensaje, disable_web_preview=True)
-    print("☀️ Saludo matutino enviado.")
-
-def enviar_aviso_taquilla():
-    mensaje_promo = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n"
-        "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
-        "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
-        "Recuerda que para jugar con nosotros debes acceder primero al Canal de WhatsApp para verificar si la taquilla se encuentra activa el día de hoy:\n"
-        "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
-        "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
-        "💬 También estamos disponibles por Telegram:\n"
-        "👉 t.me/ag\\_haroldjose\n\n"
-        "¡Mucha suerte en sus jugadas! 🍀🔥"
-    )
-    enviar_telegram(mensaje_promo, disable_web_preview=True)
-    print("📢 Aviso de taquilla enviado.")
-
-def enviar_mensaje_cierre():
-    mensaje = (
-        "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-        "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
-        "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨"
-    )
-    enviar_telegram(mensaje, disable_web_preview=True)
-    print("🌙 Mensaje de cierre de jornada enviado.")
-
-def normalizar_hora_tabla(hora_str):
-    hora_str = hora_str.upper().strip()
-    m = re.search(r'(\d{1,2}):?(\d{2})?\s*(AM|PM)?', hora_str)
-    if not m:
-        return None
-    h = int(m.group(1))
-    ampm = m.group(3)
-    if ampm == 'PM' and h < 12:
-        h += 12
-    elif ampm == 'AM' and h == 12:
-        h = 0
-    elif 1 <= h <= 7:
-        h += 12
-    if 8 <= h <= 19:
-        return f"{h:02d}:00"
-    return None
-
-def formatear_hora_tabla(h_str):
-    try:
-        h_part = int(h_str.split(":")[0])
-        if h_part == 0:
-            return "12:00"
-        elif h_part > 12:
-            return f"{h_part - 12:02d}:00"
-        return f"{h_part:02d}:00"
-    except:
-        return h_str
-
-# --- CONSTRUCCIÓN DE TABLA COMPACTA ---
-def build_table_message():
-    hours = [f"{str(i).zfill(2)}:00" for i in range(8, 20)]
-
-    groups = [
-        ["La Granjita", "Lotto Activo", "Selva Plus"],
-        ["Guácharo Activo", "Loto Chaima", "Monje Millonario"],
-        ["Lotto Animalito", "Lotto Pantera", "Lotto Real"],
-        ["Lotto Rd", "Centena Animalitos", "Mega Animal"],
-        ["Ruleton Perú", "Ruleton Colombia", "Ruleton Venezuela"],
-        ["Cóndor Gana", "Fruti Gana", "Tropi Gana"],
-        ["Granja Millonaria", "Zoológico Activo", "Lotto Max"]
+# 2. PIRÁMIDE TÁCTICA (6:31 AM)
+def generate_pyramid(date_str):
+  digits = [int(c) for c in date_str if c.isdigit()]
+  rows = [digits]
+  while len(rows[-1]) > 1:
+    current_row = rows[-1]
+    next_row = [
+        (current_row[i] + current_row[i + 1]) % 10
+        for i in range(len(current_row) - 1)
     ]
+    rows.append(next_row)
 
-    text = HEADER_TEXT + "\n"
+  pyramid_text = ""
+  for idx, row in enumerate(rows):
+    indent = "  " * idx
+    row_str = "  ".join(str(n) for n in row)
+    pyramid_text += f"{indent}{row_str}\n"
+  return pyramid_text
 
-    for group in groups:
-        abbrs = [ABBR_MAP.get(lot, lot[:4]) for lot in group]
-        header_line = "HORA " + " . ".join(abbrs)
-        text += header_line + "\n"
 
-        for h in hours:
-            h_display = formatear_hora_tabla(h)
-            row_line = f"{h_display} "
-            for lot in group:
-                res = results_storage.get(h, {}).get(lot)
-                if res:
-                    num = res['num']
-                    emoji = res['info'][1]
-                    row_line += f" {num}{emoji} "
-                else:
-                    row_line += f" ....🚫"
-            text += row_line.rstrip() + "\n"
-        text += "\n"
+def send_tactical_pyramid():
+  today_str = datetime.now().strftime("%d/%m/%Y")
+  pyramid_art = generate_pyramid(today_str)
+  mensaje = (
+      "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
+      "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
+      f"📅 Fecha: {today_str}\n"
+      "Análisis matemático actualizado y listo para la jugada. ¡A asegurar"
+      " posición:\n\n"
+      f"{pyramid_art}\n"
+      "🔥 DATOS CLAVES PARA HOY:\n"
+      "📌 25-13-07\n"
+      "📌 35-20-02\n\n"
+      "⚡ ¡La precisión y los números hablan por sí solos! ¡Juega con confianza"
+      " y gana con nosotros! 🍀 💰"
+  )
+  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
 
-    text += "MUCHA SUERTE EN SUS JUGADAS"
-    return text
 
-def enviar_tabla_resultados():
-    hora_actual = datetime.now().hour
-    if 8 <= hora_actual <= 20:
-        try:
-            enviar_telegram(build_table_message(), disable_web_preview=True)
-        except Exception as e:
-            print(f"⚠️ Error tabla: {e}")
+# 3. BUENOS DÍAS (7:00 AM)
+def send_good_morning():
+  mensaje = (
+      "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
+      "🌅 ¡Buenos días a todos! 🌅\n\n"
+      "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos"
+      " compartiendo todos los resultados de los animalitos a medida que vayan"
+      " saliendo.\n\n"
+      "📢 Nuestros canales oficiales:\n"
+      "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
+      "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
+      "💬 Canal de WhatsApp:"
+      " https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+      "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥"
+  )
+  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
 
-# --- RASPADO AISLADO Y ENVÍO INMEDIATO DE RESULTADOS INDIVIDUALES ---
-def verificar_resultados():
-    global resultados_enviados, primera_ejecucion, results_storage
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
+
+# 4. AVISO IMPORTANTE (10:00 AM, 2:00 PM, 5:00 PM)
+def send_important_notice():
+  mensaje = (
+      "🎯 AGENCIA HAROLD JOSE 🎯\n"
+      "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
+      "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
+      "Recuerda que para jugar con nosotros debes acceder primero al Canal de"
+      " WhatsApp para verificar si la taquilla se encuentra activa el día de"
+      " hoy:\n"
+      "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+      "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y"
+      " escribirnos directamente:\n"
+      "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
+      "💬 También estamos disponibles por Telegram:\n"
+      "👉 t.me/ag_haroldjose\n\n"
+      "¡Mucha suerte en sus jugadas! 🍀🔥"
+  )
+  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+
+
+# 5. AVISO DE POLLAS (Minuto 10 de cada hora)
+def send_pollas_notice():
+  mensaje = (
+      "🔥 ¡Ya se subieron o ya se actualizó el canal con las pollas de este"
+      " sorteo! No te pierdas de los sorteos de las pollas, puedes verlo aquí"
+      " 👇🏻\nhttps://t.me/pollasydupletas"
+  )
+  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+
+
+# 6. CIERRE DE JORNADA (9:10 PM)
+def send_night_closing():
+  mensaje = (
+      "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
+      "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
+      "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con"
+      " nosotros! Los esperamos el día de mañana con mucha más suerte y"
+      " energía. 🍀✨"
+  )
+  bot.send_message(chat_id=CHANNEL_ID, text=mensaje)
+
+
+# 7. SCRAPING Y RESULTADOS (Minuto 10 de cada hora)
+def fetch_and_post_results():
+  global pinned_summary_message_id
+  url_principal = "https://lotery.winbigvzla.com/resultados"
+  try:
+    response = requests.get(url_principal, timeout=10)
+    if response.status_code != 200:
+      return
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    resultados_detectados = []
+
+    for res in resultados_detectados:
+      if "RULETA ROYAL" in res["lottery"].upper():
+        continue
+
+      mensaje_individual = (
+          "🎯 AG HAROLD JOSE 🎯\n\n"
+          f"🎰 {res['lottery']}\n"
+          f"🕒 {res['time']}  {res['number']} - {res['animal']}\n"
+          "https://t.me/resultadosagharoldjose"
+      )
+      bot.send_message(chat_id=CHANNEL_ID, text=mensaje_individual)
+      update_cumulative_dashboard(res)
+
+  except Exception as e:
+    print(f"Error scraping: {e}")
+
+
+def update_cumulative_dashboard(new_result):
+  global pinned_summary_message_id
+  dashboard_text = (
+      "📊 <b>TABLA RESUMEN ACUMULATIVA - RESULTADOS DEL DÍA</b> 📊\n\n"
+      "HORA  | LOTTO ACTIVO | GUACHARO | CHAIMA\n"
+      "------------------------------------------\n"
+      "08:00 | 20 🐷        | 10 🐅    | 09 🦅\n"
+      f"<i>Actualizado: {new_result['lottery']} ({new_result['time']}) ->"
+      f" {new_result['number']} {new_result['animal']}</i>"
+  )
+  try:
+    if pinned_summary_message_id is None:
+      sent_msg = bot.send_message(
+          chat_id=CHANNEL_ID, text=dashboard_text, parse_mode="HTML"
+      )
+      pinned_summary_message_id = sent_msg.message_id
+      bot.pin_chat_message(
+          chat_id=CHANNEL_ID, message_id=pinned_summary_message_id
+      )
+    else:
+      bot.edit_message_text(
+          chat_id=CHANNEL_ID,
+          message_id=pinned_summary_message_id,
+          text=dashboard_text,
+          parse_mode="HTML",
+      )
+  except TelegramError as e:
+    print(f"Error dashboard: {e}")
+
+
+# ==========================================
+# PLANIFICADOR Y EJECUCIÓN
+# ==========================================
+if __name__ == "__main__":
+  # Iniciar Flask en un hilo secundario para Render
+  t = Thread(target=run_flask)
+  t.start()
+
+  # Configurar horarios
+  schedule.every().day.at("06:30").do(send_bcv_rate)
+  schedule.every().day.at("06:31").do(send_tactical_pyramid)
+  schedule.every().day.at("07:00").do(send_good_morning)
+
+  schedule.every().day.at("10:00").do(send_important_notice)
+  schedule.every().day.at("14:00").do(send_important_notice)
+  schedule.every().day.at("17:00").do(send_important_notice)
+
+  schedule.every().day.at("18:30").do(send_bcv_rate)
+  schedule.every().day.at("21:10").do(send_night_closing)
+
+  schedule.every().hour.at(":10").do(fetch_and_post_results)
+  schedule.every().hour.at(":10").do(send_pollas_notice)
+
+  print("Bot en marcha en Render...")
+  while True:
+    schedule.run_pending()
+    time.sleep(1)
     
-    try:
-        resp = requests.get(URL_LOTERIA, headers=headers, timeout=15, verify=False)
-        if resp.status_code != 200:
-            return
-        
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        tarjetas = soup.find_all(['div', 'section', 'article'], class_=re.compile(r'card|box|lottery|panel|item', re.IGNORECASE))
-        if not tarjetas:
-            tarjetas = [soup]
-
-        for tarjeta in tarjetas:
-            titulo_elem = tarjeta.find(['h1', 'h2', 'h3', 'h4', 'div', 'span'], class_=re.compile(r'title|name|header', re.IGNORECASE))
-            texto_titulo = titulo_elem.get_text(" ", strip=True) if titulo_elem else ""
-            
-            loteria_encontrada = obtener_clave_estandar(texto_titulo)
-            
-            if loteria_encontrada not in ABBR_MAP:
-                texto_tarjeta_completo = tarjeta.get_text(" ", strip=True)[:150]
-                for key_oficial in ABBR_MAP.keys():
-                    if normalizar_cadena(key_oficial) in normalizar_cadena(texto_tarjeta_completo):
-                        loteria_encontrada = key_oficial
-                        break
-
-            if loteria_encontrada in ABBR_MAP:
-                bloques_horas = tarjeta.find_all(['div', 'li', 'tr', 'p', 'span'], class_=re.compile(r'item|row|slot|result|hora|data', re.IGNORECASE))
-                if not bloques_horas:
-                    bloques_horas = [tarjeta]
-
-                for b_hora in bloques_horas:
-                    t_texto = b_hora.get_text(" ", strip=True).upper()
-                    if "PENDIENTE" in t_texto:
-                        continue
-                    
-                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', t_texto)
-                    if match_h:
-                        texto_sin_hora = t_texto.replace(match_h.group(1), "")
-                        match_res = re.search(r'\b(0[0-9]|[1-2][0-9]|3[0-6])\b', texto_sin_hora)
-                        
-                        if match_res:
-                            hora_norm = normalizar_hora_tabla(match_h.group(1))
-                            num_val = match_res.group(1).zfill(2)
-                            
-                            if hora_norm and int(num_val) <= 36:
-                                animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
-                                
-                                if hora_norm not in results_storage:
-                                    results_storage[hora_norm] = {}
-                                results_storage[hora_norm][loteria_encontrada] = {'num': num_val, 'info': animal_info}
-                                
-                                key_res = f"{loteria_encontrada}_{hora_norm}_{num_val}"
-                                if key_res not in resultados_enviados and not primera_ejecucion:
-                                    resultados_enviados.add(key_res)
-                                    h_display = formatear_hora_tabla(hora_norm)
-                                    msg_individual = (
-                                        "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
-                                        "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙹𝙰 ⊱╮\n\n"
-                                        f"🎯 *RESULTADO OFICIAL* 🎯\n"
-                                        f"🏛️ *Lotería:* {loteria_encontrada}\n"
-                                        f"⏰ *Hora:* {h_display}\n"
-                                        f"🎲 *Animal:* *{num_val}* - {animal_info[0]} {animal_info[1]}\n\n"
-                                        "📲 JUEGA AQUI WHATSAPP: 04124489363"
-                                    )
-                                    enviar_telegram(msg_individual, disable_web_preview=True)
-                                elif key_res not in resultados_enviados:
-                                    resultados_enviados.add(key_res)
-
-    except Exception as e:
-        print(f"⚠️ Error en raspado: {e}")
-
-    if primera_ejecucion:
-        primera_ejecucion = False
-        print("🚀 Sincronización inicial completada (resultados previos cacheados sin spam).")
-
-def loop_bot():
-    verificar_resultados()
-
-    schedule.every().day.at("00:00").do(limpiar_memoria_diaria)
-    schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
-    schedule.every().day.at("06:31").do(enviar_piramide_diaria)
-    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    
-    schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
-    
-    schedule.every().day.at("15:30").do(tarea_refuerzo_tarde)
-    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-
-    schedule.every().hour.at(":10").do(enviar_tabla_resultados)
-    schedule.every(2).minutes.do(verificar_resultados)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-
-if __name__ == '__main__':
-    t_schedule = Thread(target=loop_bot)
-    t_schedule.daemon = True
-    t_schedule.start()
-
-    t_bot = Thread(target=lambda: bot.infinity_polling(skip_pending=True))
-    t_bot.daemon = True
-    t_bot.start()
-
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
