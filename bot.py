@@ -4,7 +4,33 @@ from bs4 import BeautifulSoup
 import requests
 from telegram import Bot
 from telegram.error import TelegramError
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import os
 
+# ==========================================
+# SERVIDOR WEB FALSO PARA RENDER (EVITA ERROR DE PUERTOS)
+# ==========================================
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running successfully!")
+        
+    def log_message(self, format, *args):
+        return # Evita saturar los logs con cada ping
+
+def run_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+# Iniciar el servidor en segundo plano antes de arrancar el bot
+threading.Thread(target=run_server, daemon=True).start()
+
+# ==========================================
+# CONFIGURACIÓN DEL BOT
+# ==========================================
 TOKEN = "8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk"
 CHANNEL_ID = "@pruebajsj"
 bot = Bot(token=TOKEN)
@@ -252,7 +278,6 @@ if __name__ == "__main__":
   print("[*] Bot iniciado correctamente. Manteniendo servicio activo...")
   while True:
     try:
-      # Aquí se ejecuta el ciclo de verificación de resultados cada 60 segundos
       check_and_process_results()
       time.sleep(60)
     except KeyboardInterrupt:
