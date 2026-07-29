@@ -32,18 +32,6 @@ bot = telebot.TeleBot(TOKEN)
 URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
 URL_BCV = 'https://www.bcv.org.ve/'
 
-# Enlaces oficiales individuales para garantizar la lectura de resultados
-ENLACES_OFICIALES = {
-    "Lotto Activo": "https://www.lottoactivo.com/resultados/lotto_activo/",
-    "Guácharo Activo": "https://www.guacharoactivo.com.ve/resultados",
-    "Loto Chaima": "https://lotochaima.com/",
-    "La Granjita": "https://lagranjitaonline.com/",
-    "Selva Plus": "https://www.selvaplus.com/resultados",
-    "Monje Millonario": "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
-    "Lotto Rd": "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
-    "Guacharito Millonario": "https://elguacharitomillonario.com/"
-}
-
 # --- FUNCIÓN PARA REMOVER ACENTOS Y NORMALIZAR TEXTO ---
 def normalizar_cadena(texto):
     if not texto:
@@ -176,58 +164,8 @@ def home():
     color_estado = "green" if taquilla_activa_hoy else "red"
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal @pruebajsj!<br>"
-        f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b><br><br>"
-        "<b>Enlaces de prueba rápida (Test):</b><br>"
-        "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada</a><br>"
-        "👉 <a href='/test/piramide'>Probar Pirámide Numérica</a><br>"
-        "👉 <a href='/test/bcv'>Probar Tasa BCV</a><br>"
-        "👉 <a href='/test/saludo'>Probar Saludo Matutino</a><br>"
-        "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla</a><br>"
-        "👉 <a href='/test/resultados'>Forzar Revisión de Resultados</a><br>"
-        "👉 <a href='/test/tabla'>Probar Tabla de Resultados</a><br>"
-        "👉 <a href='/test/cierre'>Probar Mensaje de Cierre</a>"
+        f"Estado de la Taquilla Hoy: <b style='color: {color_estado};'>{estado_texto}</b>"
     )
-
-@app.route('/test/madrugada')
-def test_madrugada():
-    enviar_saludo_madrugada()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/piramide')
-def test_piramide():
-    enviar_piramide_diaria()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/bcv')
-def test_bcv():
-    enviar_tasa_dolar()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/saludo')
-def test_saludo():
-    enviar_saludo_matutino()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/taquilla')
-def test_taquilla():
-    enviar_aviso_taquilla()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/resultados')
-def test_resultados():
-    verificar_resultados()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/tabla')
-def test_tabla():
-    verificar_resultados()
-    enviar_tabla_resultados()
-    return "¡Prueba ejecutada!"
-
-@app.route('/test/cierre')
-def test_cierre():
-    enviar_mensaje_cierre()
-    return "¡Prueba ejecutada!"
 
 resultados_enviados = set()
 primera_ejecucion = True
@@ -290,50 +228,41 @@ def capturar_texto_canal(message):
             activar_taquilla_proceso()
 
 def enviar_saludo_madrugada():
-    mensaje = (
-        "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n"
-        "🌅 ¡Despertando con la mejor energía y listos para ganar! 🌅\n\n"
-        "Comenzamos este nuevo día activos y con los mejores datos. ¡Que la suerte esté de nuestro lado! 🍀🔥"
-    )
-    enviar_telegram(mensaje, disable_web_preview=True)
+    enviar_telegram("🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n\n🌅 ¡Despertando con la mejor energía y listos para ganar! 🌅\n\nComenzamos este nuevo día activos y con los mejores datos. ¡Que la suerte esté de nuestro lado! 🍀🔥", disable_web_preview=True)
 
 def generar_piramide():
     ahora = datetime.now()
     fecha_str = ahora.strftime("%d/%m/%Y")
     digitos = [int(c) for c in fecha_str if c.isdigit()]
-    
     filas = [digitos]
     while len(filas[-1]) > 1:
         actual = filas[-1]
         siguiente = [(actual[i] + actual[i+1]) % 10 for i in range(len(actual) - 1)]
         filas.append(siguiente)
-    
     lineas_formateadas = []
     for i, f in enumerate(filas):
         nums_str = "  ".join(str(d) for d in f)
         dots = "." * (3 + (i * 2))
         lineas_formateadas.append(f"{dots}   {nums_str}   {dots}")
-    
     cuerpo_piramide = "\n".join(lineas_formateadas)
     seed_val = int(ahora.strftime("%Y%m%d"))
     rnd = random.Random(seed_val)
-    
     candidates = []
     for f in filas:
         for idx in range(len(f) - 1):
             val = (f[idx] * 10 + f[idx+1]) % 37
             candidates.append(f"{val:02d}")
-            
-    unique_candidates = [c for c in candidates if c not in locals().get('seen', set()) and not locals().update({id(c): None})]
+    unique_candidates = []
+    for c in candidates:
+        if c not in unique_candidates:
+            unique_candidates.append(c)
     while len(unique_candidates) < 6:
         val_rand = rnd.randint(0, 36)
         c_rand = f"{val_rand:02d}"
         if c_rand not in unique_candidates:
             unique_candidates.append(c_rand)
-            
     d1 = f"{unique_candidates[0]}-{unique_candidates[1]}-{unique_candidates[2]}"
     d2 = f"{unique_candidates[3]}-{unique_candidates[4]}-{unique_candidates[5]}"
-    
     return (
         "🎯 CENTRO DE APUESTAS HAROLD JOSÉ 🎯\n"
         "📢 REPORTE TÁCTICO - LA PIRÁMIDE 📢\n\n"
@@ -416,7 +345,6 @@ def build_table_message():
 
     for group in groups:
         abbrs = [ABBR_MAP.get(lot, lot[:4]) for lot in group]
-        # Encabezado compacto con un solo punto o barra para que no se baje de línea
         header_line = "HORA " + " . ".join(abbrs)
         text += header_line + "\n"
 
@@ -438,61 +366,72 @@ def build_table_message():
     return text
 
 def enviar_tabla_resultados():
-    try:
-        enviar_telegram(build_table_message(), disable_web_preview=True)
-    except Exception as e:
-        print(f"⚠️ Error tabla: {e}")
+    # Solo enviar la tabla si estamos dentro del horario operativo (8 AM a 8 PM)
+    hora_actual = datetime.now().hour
+    if 8 <= hora_actual <= 20:
+        try:
+            enviar_telegram(build_table_message(), disable_web_preview=True)
+        except Exception as e:
+            print(f"⚠️ Error tabla: {e}")
 
-# --- RASPADO ROBUSTO MULTI-FUENTE (AGREGADOR + ENLACES OFICIALES) ---
-def procesar_texto_html(html_text, nombre_lot_sugerida):
-    soup = BeautifulSoup(html_text, 'html.parser')
-    encontrados = 0
-    
-    # Buscar bloques de texto o tarjetas de resultados
-    bloques = soup.find_all(['div', 'li', 'article', 'tr', 'td', 'span'], class_=re.compile(r'result|item|slot|draw|card|number|row', re.IGNORECASE))
-    if not bloques:
-        bloques = [soup]
-
-    for b in bloques:
-        texto = b.get_text(" ", strip=True).upper()
-        if "PENDIENTE" in texto:
-            continue
-            
-        match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', texto)
-        match_res = re.search(r'\b(\d{1,2})\b', texto)
-        
-        if match_h and match_res:
-            hora_norm = normalizar_hora_tabla(match_h.group(1))
-            num_val = match_res.group(1).zfill(2)
-            if hora_norm and int(num_val) <= 36:
-                animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
-                if hora_norm not in results_storage:
-                    results_storage[hora_norm] = {}
-                results_storage[hora_norm][nombre_lot_sugerida] = {'num': num_val, 'info': animal_info}
-                encontrados += 1
-    return encontrados
-
+# --- RASPADO AISLADO POR CADA CONTENEDOR DE LOTERÍA ---
 def verificar_resultados():
     global resultados_enviados, primera_ejecucion, results_storage
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
     
-    # 1. Consultar el agregador principal
     try:
-        resp = requests.get(URL_LOTERIA, headers=headers, timeout=10, verify=False)
-        if resp.status_code == 200:
-            for lot_oficial in ABBR_MAP.keys():
-                procesar_texto_html(resp.text, lot_oficial)
-    except Exception as e:
-        print(f"⚠️ Error en agregador principal: {e}")
+        resp = requests.get(URL_LOTERIA, headers=headers, timeout=15, verify=False)
+        if resp.status_code != 200:
+            return
+        
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        
+        # Buscar tarjetas o bloques individuales de cada lotería en la página
+        contenedores = soup.find_all(['div', 'section', 'article'], class_=re.compile(r'card|box|lottery|panel|content|item', re.IGNORECASE))
+        if not contenedores:
+            contenedores = [soup]
 
-    # 2. Consultar cada enlace oficial individual para asegurar respaldo total
-    for lot_name, url_link in ENLACES_OFICIALES.items():
-        try:
-            resp_ind = requests.get(url_link, headers=headers, timeout=8, verify=False)
-            if resp_ind.status_code == 200:
-                procesar_texto_html(resp_ind.text, lot_name)
-        except Exception as e:
-            print(f"⚠️ Error consultando {lot_name}: {e}")
+        for cont in contenedores:
+            texto_cont = cont.get_text(" ", strip=True)
+            
+            # Identificar a qué lotería pertenece este bloque específico
+            loteria_encontrada = None
+            for key_oficial in ABBR_MAP.keys():
+                if normalizar_cadena(key_oficial) in normalizar_cadena(texto_cont[:120]) or \
+                   any(alias in normalizar_cadena(texto_cont[:120]) for alias, std in ALIAS_LOTERIA.items() if std == key_oficial):
+                    loteria_encontrada = key_oficial
+                    break
+            
+            if not loteria_encontrada:
+                header_tag = cont.find(['h1', 'h2', 'h3', 'h4', 'strong', 'b'])
+                if header_tag:
+                    loteria_encontrada = obtener_clave_estandar(header_tag.get_text())
+
+            if loteria_encontrada and loteria_encontrada in ABBR_MAP:
+                # Extraer filas o elementos de hora y número únicamente DENTRO de este bloque
+                filas = cont.find_all(['div', 'li', 'tr', 'p', 'span'], class_=re.compile(r'item|row|slot|result|hora|data', re.IGNORECASE))
+                if not filas:
+                    filas = [cont]
+
+                for fila in filas:
+                    t_texto = fila.get_text(" ", strip=True).upper()
+                    if "PENDIENTE" in t_texto:
+                        continue
+                    match_h = re.search(r'(\d{1,2}:\d{2}\s*(?:AM|PM)?)', t_texto)
+                    match_res = re.search(r'\b(\d{1,2})\b', t_texto)
+                    if match_h and match_res:
+                        hora_norm = normalizar_hora_tabla(match_h.group(1))
+                        num_val = match_res.group(1).zfill(2)
+                        if hora_norm and int(num_val) <= 36:
+                            animal_info = ANIMAL_DATA.get(num_val, ("ANIMAL", "🐾"))
+                            if hora_norm not in results_storage:
+                                results_storage[hora_norm] = {}
+                            
+                            # Guardado estricto e independiente por lotería
+                            results_storage[hora_norm][loteria_encontrada] = {'num': num_val, 'info': animal_info}
+
+    except Exception as e:
+        print(f"⚠️ Error en raspado: {e}")
 
     if primera_ejecucion:
         primera_ejecucion = False
@@ -512,6 +451,7 @@ def loop_bot():
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
 
+    # Envío automático de la tabla cada hora al minuto 10 (restringido de 8 AM a 8 PM)
     schedule.every().hour.at(":10").do(enviar_tabla_resultados)
     schedule.every(2).minutes.do(verificar_resultados)
 
