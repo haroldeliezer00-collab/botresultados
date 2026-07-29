@@ -1,7 +1,7 @@
-import time
 from datetime import datetime
-import requests
+import time
 from bs4 import BeautifulSoup
+import requests
 from telegram import Bot
 from telegram.error import TelegramError
 
@@ -18,7 +18,10 @@ daily_results_table = {}  # Almacena los resultados por hora y lotería para la 
 def send_message(text, chat_id=CHANNEL_ID):
   try:
     res = bot.send_message(
-        chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=False
+        chat_id=chat_id,
+        text=text,
+        parse_mode="HTML",
+        disable_web_page_preview=False,
     )
     return res.message_id
   except Exception as e:
@@ -57,7 +60,6 @@ def generate_pyramid(date_str):
 
 
 def job_good_morning():
-  # Limpiar memoria al iniciar un nuevo día
   global processed_results, pinned_summary_message_id, daily_results_table
   processed_results.clear()
   pinned_summary_message_id = None
@@ -166,8 +168,6 @@ def check_and_process_results():
     soup = BeautifulSoup(response.text, "html.parser")
 
     # --- SIMULACIÓN DE EXTRACCIÓN DE RESULTADOS DE LA PÁGINA ---
-    # Aquí el parser lee la tabla o elementos web de winbigvzla.
-    # Ejemplo de elementos detectados en este ciclo de hora:
     nuevos_resultados_detectados = [
         # {"lottery": "LOTTO ACTIVO", "time": "09:00 AM", "number": "11", "animal": "GATO"}
     ]
@@ -179,7 +179,6 @@ def check_and_process_results():
       if "RULETA ROYAL" in lottery_name:
         continue
 
-      # Identificador único para saber si ya mandamos este resultado individual
       result_key = f"{item['time']}_{lottery_name}_{item['number']}"
 
       if result_key not in processed_results:
@@ -202,7 +201,6 @@ def check_and_process_results():
             f"{item['number']} {item['animal']}"
         )
 
-        # Actualizar o Crear el Mensaje Fijado Acumulativo
         update_cumulative_dashboard_message()
 
   except Exception as e:
@@ -212,7 +210,6 @@ def check_and_process_results():
 def update_cumulative_dashboard_message():
   global pinned_summary_message_id
 
-  # Construir la tabla con las horas acumuladas hasta el momento
   table_rows = ""
   for t_slot in sorted(daily_results_table.keys()):
     lotto_val = daily_results_table[t_slot].get("LOTTO ACTIVO", "---")
@@ -231,7 +228,6 @@ def update_cumulative_dashboard_message():
 
   try:
     if pinned_summary_message_id is None:
-      # Si es el primer resultado del día, enviamos el mensaje y lo fijamos
       msg_id = send_message(dashboard_text)
       if msg_id:
         pinned_summary_message_id = msg_id
@@ -239,7 +235,6 @@ def update_cumulative_dashboard_message():
             chat_id=CHANNEL_ID, message_id=pinned_summary_message_id
         )
     else:
-      # Si ya existe el mensaje fijado, EDITAMOS el mismo mensaje existente con la nueva fila
       bot.edit_message_text(
           chat_id=CHANNEL_ID,
           message_id=pinned_summary_message_id,
@@ -248,4 +243,22 @@ def update_cumulative_dashboard_message():
       )
   except TelegramError as e:
     print(f"[X] Error actualizando el mensaje fijado acumulativo: {e}")
+
+
+# ==========================================
+# 4. BUCLE PRINCIPAL (MANTIENE EL BOT ACTIVO)
+# ==========================================
+if __name__ == "__main__":
+  print("[*] Bot iniciado correctamente. Manteniendo servicio activo...")
+  while True:
+    try:
+      # Aquí se ejecuta el ciclo de verificación de resultados cada 60 segundos
+      check_and_process_results()
+      time.sleep(60)
+    except KeyboardInterrupt:
+      print("\n[!] Bot detenido manualmente.")
+      break
+    except Exception as e:
+      print(f"[X] Error en el bucle principal: {e}")
+      time.sleep(10)
   
