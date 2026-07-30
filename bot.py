@@ -257,7 +257,7 @@ def enviar_saludo_matutino():
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
         "🌅 ¡Buenos días a todos! 🌅\n\n"
-        "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+        "Ya arrancamos un nuevo día con la mejor energía. Por hiero estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
         "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
@@ -445,13 +445,13 @@ def handle_channel_posts(message):
                 print("✅ Taquilla activada y publicada automáticamente al canal principal.")
         return
 
-    # 2. Canal privado "RESULTados" para consolidado de animalitos con formato en bloque de código
+    # 2. Canal privado "RESULTados" para consolidado de animalitos en formato normal (sin bloque de código)
     if "resultados" in chat_title.lower():
         if "resultados animalitos" in text.lower():
             texto_tabla = text.strip()
-            mensaje_completo = f"{HEADER_RESULTADOS}\n\n```{texto_tabla}```"
+            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_tabla}"
             enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Tabla de resultados en bloque de código enviada al canal principal.")
+            print("✅ Tabla de resultados enviada al canal principal en formato limpio.")
         return
 
 def loop_bot():
