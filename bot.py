@@ -26,28 +26,28 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # Credenciales y canal principal
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL = '@pruebajsj'
-ENLACE_CANAL = 'https://t.me/resultadosagharoldjose'
-ENLACE_POLLAS = 'https://t.me/pollasydupletas'
+ENLACE_CANAL = '[https://t.me/resultadosagharoldjose](https://t.me/resultadosagharoldjose)'
+ENLACE_POLLAS = '[https://t.me/pollasydupletas](https://t.me/pollasydupletas)'
 
 bot = telebot.TeleBot(TOKEN)
 
-URL_LOTERIA = 'https://lotery.winbigvzla.com/resultados'
-URL_BCV = 'https://www.bcv.org.ve/'
+URL_LOTERIA = '[https://lotery.winbigvzla.com/resultados](https://lotery.winbigvzla.com/resultados)'
+URL_BCV = '[https://www.bcv.org.ve/](https://www.bcv.org.ve/)'
 
 # Diccionario de páginas oficiales de respaldo por nombre de lotería
 URLS_OFICIALES = {
-    "LOTTO ACTIVO": "https://www.lottoactivo.com/resultados/lotto_activo/",
-    "GUACHARO ACTIVO": "https://www.guacharoactivo.com.ve/resultados",
-    "LOTO CHAIMA": "https://lotochaima.com/",
-    "LA GRANJITA": "https://lagranjitaonline.com/",
-    "SELVA PLUS": "https://www.selvaplus.com/resultados",
-    "MONJE MILLONARIO": "https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/",
-    "LOTTO ACTIVO RD INTERNACIONAL": "https://www.lottoactivo.com/resultados/lotto_activo_internacional/",
-    "GUACA ACTIVA": "https://lotery.winbigvzla.com/resultados",
-    "MEGA GUACA": "https://lotery.winbigvzla.com/resultados",
-    "EL GUACHARITO MILLONARIO": "https://elguacharitomillonario.com/",
-    "TRIO ACTIVO": "https://www.lottoactivo.com/resultados/trio_activo/",
-    "TRIPLE GUACA37": "https://www.guacaactiva.com/"
+    "LOTTO ACTIVO": "[https://www.lottoactivo.com/resultados/lotto_activo/](https://www.lottoactivo.com/resultados/lotto_activo/)",
+    "GUACHARO ACTIVO": "[https://www.guacharoactivo.com.ve/resultados](https://www.guacharoactivo.com.ve/resultados)",
+    "LOTO CHAIMA": "[https://lotochaima.com/](https://lotochaima.com/)",
+    "LA GRANJITA": "[https://lagranjitaonline.com/](https://lagranjitaonline.com/)",
+    "SELVA PLUS": "[https://www.selvaplus.com/resultados](https://www.selvaplus.com/resultados)",
+    "MONJE MILLONARIO": "[https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/](https://www.lottoactivo.com/resultados/lottoactivo2(monjemillonario)/)",
+    "LOTTO ACTIVO RD INTERNACIONAL": "[https://www.lottoactivo.com/resultados/lotto_activo_internacional/](https://www.lottoactivo.com/resultados/lotto_activo_internacional/)",
+    "GUACA ACTIVA": "[https://lotery.winbigvzla.com/resultados](https://lotery.winbigvzla.com/resultados)",
+    "MEGA GUACA": "[https://lotery.winbigvzla.com/resultados](https://lotery.winbigvzla.com/resultados)",
+    "EL GUACHARITO MILLONARIO": "[https://elguacharitomillonario.com/](https://elguacharitomillonario.com/)",
+    "TRIO ACTIVO": "[https://www.lottoactivo.com/resultados/trio_activo/](https://www.lottoactivo.com/resultados/trio_activo/)",
+    "TRIPLE GUACA37": "[https://www.guacaactiva.com/](https://www.guacaactiva.com/)"
 }
 
 resultados_enviados = set()
@@ -62,19 +62,19 @@ caption_taquilla = (
     "📲 Envía tus jugadas:\n"
     "(Comprobante de pago / Lotería / monto / Hora)\n\n"
     "📖 Consulta nuestro reglamento aquí:\n"
-    "https://wa.me/p/33319103291071105/584124489363\n"
-    "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
+    "[https://wa.me/p/33319103291071105/584124489363](https://wa.me/p/33319103291071105/584124489363)\n"
+    "🚀 Agiliza tu proceso aquí: [https://wa.me/p/24724650613899486/584124489363](https://wa.me/p/24724650613899486/584124489363)\n\n"
     "RESULTADOS AUTOMÁTICOS\n"
-    "https://t.me/pruebajsj\n\n"
+    "[https://t.me/pruebajsj](https://t.me/pruebajsj)\n\n"
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
-# Encabezado impecable para la plantilla de resultados de animalitos
+# Nuevo encabezado personalizado solicitado
 HEADER_RESULTADOS = (
-    "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
-    "𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙕𝙰\n"
-    "ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰ𝙸ᴄɪᴀʟᴇꜱ\n"
-    "📲📳JUEGA AQUÍ 👇👇\n"
+    "AGENCIA HAROLD JOSE\n"
+    "SEGURIDAD Y CONFIANZA\n"
+    "RESULTADOS OFICIALES\n"
+    "📲JUEGA AQUI👇👇\n"
     "WHATSAPP: 04124489363"
 )
 
@@ -153,18 +153,8 @@ def test_cierre():
 def limpiar_texto(texto):
     return " ".join(texto.split())
 
-def formatear_texto_resultados(texto):
-    """Limpia y compacta los espacios de cada línea para evitar saltos de línea indeseados en móviles."""
-    lineas = texto.split('\n')
-    lineas_limpias = []
-    for linea in lineas:
-        # Reemplaza múltiples espacios/tabuladores por uno solo y quita espacios sobrantes
-        linea_limpia = re.sub(r'[ \t]+', ' ', linea).strip()
-        lineas_limpias.append(linea_limpia)
-    return '\n'.join(lineas_limpias)
-
 def enviar_telegram(mensaje, disable_web_preview=True):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){TOKEN}/sendMessage"
     payload = {
         "chat_id": CANAL, 
         "text": mensaje, 
@@ -179,7 +169,7 @@ def enviar_telegram(mensaje, disable_web_preview=True):
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
 
 def enviar_telegram_foto(photo_id, caption):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+    url = f"[https://api.telegram.org/bot](https://api.telegram.org/bot){TOKEN}/sendPhoto"
     payload = {
         "chat_id": CANAL,
         "photo": photo_id,
@@ -269,9 +259,9 @@ def enviar_saludo_matutino():
         "🌅 ¡Buenos días a todos! 🌅\n\n"
         "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
-        "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
-        "💬 Canal de WhatsApp: https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "🎟️ Catálogo y WhatsApp: [https://wa.me/c/584124489363](https://wa.me/c/584124489363)\n"
+        "📸 Instagram: [https://www.instagram.com/agharold.jose](https://www.instagram.com/agharold.jose) (@agharold.jose)\n"
+        "💬 Canal de WhatsApp: [https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T](https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T)\n\n"
         "¡Mucha suerte en sus jugadas el día de hoy y a ganar! 🍀🔥",
         disable_web_preview=True
     )
@@ -311,9 +301,9 @@ def enviar_aviso_taquilla():
         "Tu centro de apuestas de confianza. Atendemos vía WhatsApp y Telegram.\n\n"
         "📢 ¡AVISO IMPORTANTE PARA NUESTROS JUGADORES! 📢\n\n"
         "Recuerda que para jugar con nosotros debes acceder primero al Canal de WhatsApp para verificar si la taquilla se encuentra activa el día de hoy:\n"
-        "👉 https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T\n\n"
+        "👉 [https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T](https://whatsapp.com/channel/0029Vaza7YIGzzKJq7as7s1T)\n\n"
         "📲 Si la taquilla está activa, puedes revisar nuestro catálogo y escribirnos directamente:\n"
-        "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n\n"
+        "🎟️ Catálogo y WhatsApp: [https://wa.me/c/584124489363](https://wa.me/c/584124489363)\n\n"
         "💬 También estamos disponibles por Telegram:\n"
         "👉 t.me/ag_haroldjose\n\n"
         "¡Mucha suerte en sus jugadas! 🍀🔥",
@@ -447,65 +437,4 @@ def handle_channel_posts(message):
     # 1. Canal "Flyers y Acumulados" para activación de taquilla por imagen
     if "flyers y acumulados" in chat_title.lower():
         if message.photo:
-            caption = message.caption or ""
-            if "taquilla activa" in caption.lower():
-                taquilla_activa_hoy = True
-                imagen_taquilla_file_id = message.photo[-1].file_id
-                enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
-                print("✅ Taquilla activada y publicada automáticamente al canal principal.")
-        return
-
-    # 2. Canal privado "RESULTados" para consolidado de animalitos con formato limpio
-    if "resultados" in chat_title.lower():
-        if "resultados animalitos" in text.lower():
-            texto_limpio = formatear_texto_resultados(text)
-            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}"
-            enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Tabla de resultados formateada y enviada al canal principal.")
-        return
-
-def loop_bot():
-    verificar_resultados()
-    
-    schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
-    schedule.every().day.at("06:31").do(enviar_piramide_diaria)
-    schedule.every().day.at("07:00").do(enviar_saludo_matutino)
-    
-    schedule.every().day.at("06:30").do(enviar_tasa_dolar)
-    schedule.every().day.at("18:30").do(enviar_tasa_dolar)
-    
-    schedule.every().day.at("15:00").do(tarea_envio_programado_taquilla)
-    schedule.every().day.at("05:00").do(reiniciar_activacion_diaria)
-    
-    schedule.every().hour.at(":10").do(lambda: tarea_minuto_diez() if 7 <= datetime.now().hour <= 18 else None)
-    schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
-    
-    schedule.every(1).minute.do(verificar_resultados)
-
-    while True:
-        try:
-            schedule.run_pending()
-        except Exception as e:
-            print(f"Error en schedule: {e}")
-        time.sleep(1)
-
-def iniciar_polling_bot():
-    while True:
-        try:
-            bot.infinity_polling(skip_pending=True, interval=3, timeout=20)
-        except Exception as e:
-            print(f"⚠️ Error en polling de Telegram: {e}")
-            traceback.print_exc()
-            time.sleep(5)
-
-if __name__ == '__main__':
-    t_schedule = Thread(target=loop_bot)
-    t_schedule.daemon = True
-    t_schedule.start()
-
-    t_bot = Thread(target=iniciar_polling_bot)
-    t_bot.daemon = True
-    t_bot.start()
-
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+            caption
