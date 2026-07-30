@@ -316,9 +316,10 @@ def reiniciar_activacion_diaria():
 def tarea_minuto_diez():
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
-        "📢 ¡Ya se subieron o ya se actualizo el canal con las pollas de este sorteo puedes verlo aquí 👇🏻\n"
+        "📢 ¡Pollas actualizadas!\n"
+        f"Puedes verlas aquí 👇🏻\n"
         f"{ENLACE_POLLAS}\n\n"
-        "¡No te pierdas de los sorteos de las pollas! 🍀",
+        "¡Mucho éxito! 🍀",
         disable_web_preview=False
     )
 
