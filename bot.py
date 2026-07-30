@@ -69,6 +69,15 @@ caption_taquilla = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
+# Encabezado para la plantilla de resultados de animalitos del canal privado "RESULTADOS"
+HEADER_RESULTADOS = (
+    "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n\n"
+    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n\n"
+    "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪ𝒂ʟᴇꜱ\n"
+    "📲JUEGA AQUI👇👇\n"
+    "WHATSAPP: 04124489363"
+)
+
 app = Flask('')
 
 @app.route('/')
@@ -418,26 +427,31 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
-# Manejador exclusivo para publicaciones de fotos en el canal "Flyers y Acumulados"
-@bot.channel_post_handler(content_types=['photo'])
-def handle_photo_channel_post(message):
+# Manejador general para publicaciones en canales configurados ("Flyers y Acumulados" y "RESULTADOS")
+@bot.channel_post_handler(func=lambda message: True)
+def handle_channel_posts(message):
     global taquilla_activa_hoy, imagen_taquilla_file_id
     chat_title = message.chat.title or ""
+    text = message.text or message.caption or ""
     
-    # Verifica estrictamente que la publicación provenga del canal "Flyers y Acumulados"
+    # 1. Canal "Flyers y Acumulados" para activación de taquilla por imagen
     if "flyers y acumulados" in chat_title.lower():
-        caption = message.caption or ""
-        # Solo actúa si el texto contiene la frase clave exacta "taquilla activa"
-        if "taquilla activa" in caption.lower():
-            taquilla_activa_hoy = True
-            if message.photo:
+        if message.photo:
+            caption = message.caption or ""
+            if "taquilla activa" in caption.lower():
+                taquilla_activa_hoy = True
                 imagen_taquilla_file_id = message.photo[-1].file_id
-                # Envía inmediatamente la foto con el formato al canal principal
                 enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
                 print("✅ Taquilla activada y publicada automáticamente al canal principal.")
-        else:
-            # Si subes cualquier otra imagen en ese canal sin la frase clave, el bot la ignora por completo
-            pass
+        return
+
+    # 2. Canal privado "RESULTados" para consolidado de animalitos
+    if "resultados" in chat_title.lower():
+        if "resultados animalitos" in text.lower():
+            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{text}"
+            enviar_telegram(mensaje_completo, disable_web_preview=True)
+            print("✅ Tabla de resultados de animalitos copiada y enviada al canal principal.")
+        return
 
 def loop_bot():
     verificar_resultados()
