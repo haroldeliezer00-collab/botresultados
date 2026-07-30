@@ -61,7 +61,7 @@ caption_taquilla = (
     "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
     "📲 Envía tus jugadas:\n"
     "(Comprobante de pago / Lotería / monto / Hora)\n\n"
-    "📖 Consulta nuestro reglamento aquí:\n"
+    "📖 Consulta nuestro reglamento hier:\n"
     "https://wa.me/p/33319103291071105/584124489363\n"
     "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
     "RESULTADOS AUTOMÁTICOS\n"
@@ -303,7 +303,6 @@ def enviar_aviso_taquilla():
 
 def tarea_envio_programado_taquilla():
     global taquilla_activa_hoy, imagen_taquilla_file_id
-    # Si fue activada previamente por el comando del usuario, se envía sola a las 3:00 PM (o cuando esté programado)
     if taquilla_activa_hoy:
         if imagen_taquilla_file_id:
             enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
@@ -331,7 +330,6 @@ def enviar_mensaje_cierre():
         "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨",
         disable_web_preview=True
     )
-    # Al finalizar la jornada o al día siguiente se restablece el estado de activación
     taquilla_activa_hoy = False
 
 def verificar_resultados():
@@ -368,7 +366,6 @@ def verificar_resultados():
 
             nombre_loteria = limpiar_texto(nombre_loteria)
             
-            # Quitar explícitamente RULETA ROYAL
             if "RULETA ROYAL" in nombre_loteria.upper():
                 continue
 
@@ -420,47 +417,44 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
-# Manejador para detectar cuando envías la imagen con la frase "Taquilla activa"
-@bot.message_handler(content_types=['photo'])
-def handle_docs_photo(message):
+# Función unificada para procesar la imagen de taquilla tanto de mensajes directos como de publicaciones en canales
+def procesar_imagen_taquilla(message):
     global taquilla_activa_hoy, imagen_taquilla_file_id
     caption = message.caption or ""
-    # Verificar si el mensaje contiene la frase "taquilla activa" (ignorando mayúsculas/minúsculas)
     if "taquilla activa" in caption.lower():
         taquilla_activa_hoy = True
-        # Guardar el file_id de la imagen con mayor resolución (último elemento del array photo)
         if message.photo:
             imagen_taquilla_file_id = message.photo[-1].file_id
-            
-        # Reenviar inmediatamente la imagen con el texto configurado al canal
-        enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
-        bot.reply_to(message, "✅ ¡Taquilla activada correctamente y publicada en el canal!")
+            enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+            try:
+                bot.reply_to(message, "✅ ¡Taquilla activada correctamente y publicada en el canal!")
+            except Exception:
+                pass
+
+@bot.message_handler(content_types=['photo'])
+def handle_photo_message(message):
+    procesar_imagen_taquilla(message)
+
+@bot.channel_post_handler(content_types=['photo'])
+def handle_photo_channel_post(message):
+    procesar_imagen_taquilla(message)
 
 def loop_bot():
     verificar_resultados()
     
-    # Programación de tareas exactas
     schedule.every().day.at("06:30").do(enviar_saludo_madrugada)
     schedule.every().day.at("06:31").do(enviar_piramide_diaria)
     schedule.every().day.at("07:00").do(enviar_saludo_matutino)
     
-    # Tasas BCV a las 6:30 AM y 6:30 PM
     schedule.every().day.at("06:30").do(enviar_tasa_dolar)
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     
-    # Aviso programado de taquilla (ej. a las 3:00 PM / 15:00, solo si fue activado previamente)
     schedule.every().day.at("15:00").do(tarea_envio_programado_taquilla)
-    
-    # Reiniciar el estado de activación a medianoche o temprano en la madrugada
     schedule.every().day.at("05:00").do(reiniciar_activacion_diaria)
     
-    # Aviso de pollas al minuto 10 de cada hora entre las 7 AM y las 6 PM
     schedule.every().hour.at(":10").do(lambda: tarea_minuto_diez() if 7 <= datetime.now().hour <= 18 else None)
-    
-    # Cierre de jornada a las 9:10 PM
     schedule.every().day.at("21:10").do(enviar_mensaje_cierre)
     
-    # Revisión continua de resultados cada minuto
     schedule.every(1).minute.do(verificar_resultados)
 
     while True:
