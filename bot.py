@@ -69,12 +69,12 @@ caption_taquilla = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
-# Encabezado para la plantilla de resultados de animalitos del canal privado "RESULTADOS"
+# Encabezado impecable para la plantilla de resultados de animalitos
 HEADER_RESULTADOS = (
-    "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n\n"
-    "╭⊰ 𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝚉𝙰 ⊱╮\n\n"
-    "      ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰɪᴄɪ𝒂ʟᴇꜱ\n"
-    "📲JUEGA AQUI👇👇\n"
+    "★𝙰𝙶𝙴𝙽𝙲𝙸𝙰 𝙷𝙰𝚁𝙾𝙻𝙳 𝙹𝙾𝚂𝙴★\n"
+    "𝚂𝙴𝙶𝚄𝚁𝙸𝙳𝙰𝙳 𝚈 𝙲𝙾𝙽𝙵𝙸𝙰𝙽𝙕𝙰\n"
+    "ʀᴇꜱᴜʟᴛᴀᴅᴏꜱ ᴏꜰ𝙸ᴄɪᴀʟᴇꜱ\n"
+    "📲📳JUEGA AQUÍ 👇👇\n"
     "WHATSAPP: 04124489363"
 )
 
@@ -152,6 +152,16 @@ def test_cierre():
 
 def limpiar_texto(texto):
     return " ".join(texto.split())
+
+def formatear_texto_resultados(texto):
+    """Limpia y compacta los espacios de cada línea para evitar saltos de línea indeseados en móviles."""
+    lineas = texto.split('\n')
+    lineas_limpias = []
+    for linea in lineas:
+        # Reemplaza múltiples espacios/tabuladores por uno solo y quita espacios sobrantes
+        linea_limpia = re.sub(r'[ \t]+', ' ', linea).strip()
+        lineas_limpias.append(linea_limpia)
+    return '\n'.join(lineas_limpias)
 
 def enviar_telegram(mensaje, disable_web_preview=True):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -427,7 +437,7 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
-# Manejador general para publicaciones en canales configurados ("Flyers y Acumulados" y "RESULTADOS")
+# Manejador general para publicaciones en canales configurados ("Flyers y Acumulados" y "RESULTados")
 @bot.channel_post_handler(func=lambda message: True)
 def handle_channel_posts(message):
     global taquilla_activa_hoy, imagen_taquilla_file_id
@@ -445,12 +455,13 @@ def handle_channel_posts(message):
                 print("✅ Taquilla activada y publicada automáticamente al canal principal.")
         return
 
-    # 2. Canal privado "RESULTados" para consolidado de animalitos
+    # 2. Canal privado "RESULTados" para consolidado de animalitos con formato limpio
     if "resultados" in chat_title.lower():
         if "resultados animalitos" in text.lower():
-            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{text}"
+            texto_limpio = formatear_texto_resultados(text)
+            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}"
             enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Tabla de resultados de animalitos copiada y enviada al canal principal.")
+            print("✅ Tabla de resultados formateada y enviada al canal principal.")
         return
 
 def loop_bot():
