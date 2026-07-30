@@ -61,7 +61,7 @@ caption_taquilla = (
     "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
     "📲 Envía tus jugadas:\n"
     "(Comprobante de pago / Lotería / monto / Hora)\n\n"
-    "📖 Consulta nuestro reglamento hier:\n"
+    "📖 Consulta nuestro reglamento aquí:\n"
     "https://wa.me/p/33319103291071105/584124489363\n"
     "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
     "RESULTADOS AUTOMÁTICOS\n"
@@ -417,27 +417,26 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
-# Función unificada para procesar la imagen de taquilla tanto de mensajes directos como de publicaciones en canales
-def procesar_imagen_taquilla(message):
-    global taquilla_activa_hoy, imagen_taquilla_file_id
-    caption = message.caption or ""
-    if "taquilla activa" in caption.lower():
-        taquilla_activa_hoy = True
-        if message.photo:
-            imagen_taquilla_file_id = message.photo[-1].file_id
-            enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
-            try:
-                bot.reply_to(message, "✅ ¡Taquilla activada correctamente y publicada en el canal!")
-            except Exception:
-                pass
-
-@bot.message_handler(content_types=['photo'])
-def handle_photo_message(message):
-    procesar_imagen_taquilla(message)
-
+# Manejador exclusivo para publicaciones de fotos en el canal "Flyers y Acumulados"
 @bot.channel_post_handler(content_types=['photo'])
 def handle_photo_channel_post(message):
-    procesar_imagen_taquilla(message)
+    global taquilla_activa_hoy, imagen_taquilla_file_id
+    chat_title = message.chat.title or ""
+    
+    # Verifica estrictamente que la publicación provenga del canal "Flyers y Acumulados"
+    if "flyers y acumulados" in chat_title.lower():
+        caption = message.caption or ""
+        # Solo actúa si el texto contiene la frase clave exacta "taquilla activa"
+        if "taquilla activa" in caption.lower():
+            taquilla_activa_hoy = True
+            if message.photo:
+                imagen_taquilla_file_id = message.photo[-1].file_id
+                # Envía inmediatamente la foto con el formato al canal principal
+                enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+                print("✅ Taquilla activada y publicada automáticamente al canal principal.")
+        else:
+            # Si subes cualquier otra imagen en ese canal sin la frase clave, el bot la ignora por completo
+            pass
 
 def loop_bot():
     verificar_resultados()
