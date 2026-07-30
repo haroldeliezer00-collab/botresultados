@@ -53,18 +53,37 @@ URLS_OFICIALES = {
 resultados_enviados = set()
 primera_ejecucion = True
 
+# Variable de control para el mensaje de taquilla activado por imagen con texto "Taquilla activa"
+taquilla_activa_hoy = False
+imagen_taquilla_file_id = None
+caption_taquilla = (
+    "✅ AG HAROLD JOSÉ ACTIVA ✅\n"
+    "Ya estamos operativos brindando la mejor atención. Calidad, respaldo y rapidez en cada una de todas tus solicitudes.\n\n"
+    "📲 Envía tus jugadas:\n"
+    "(Comprobante de pago / Lotería / monto / Hora)\n\n"
+    "📖 Consulta nuestro reglamento aquí:\n"
+    "https://wa.me/p/33319103291071105/584124489363\n"
+    "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
+    "RESULTADOS AUTOMÁTICOS\n"
+    "https://t.me/pruebajsj\n\n"
+    "¡Mucho éxito en la jornada de hoy! 🍀✨"
+)
+
 app = Flask('')
 
 @app.route('/')
 def home():
+    estado_taq = "ACTIVADA 🟢" if taquilla_activa_hoy else "DESACTIVADA 🔴"
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br><br>"
+        f"<b>Estado del aviso de taquilla (Lunes a Lunes):</b> {estado_taq}<br><br>"
         "<b>Enlaces de prueba rápida (Test de cada opción):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
         "👉 <a href='/test/piramide'>Probar Pirámide Numérica (6:31 AM)</a><br>"
         "👉 <a href='/test/saludo'>Probar Saludo Matutino (7:00 AM)</a><br>"
         "👉 <a href='/test/bcv'>Probar Tasa Oficial BCV</a><br>"
-        "👉 <a href='/test/taquilla'>Probar Aviso de Taquilla (10am/2pm/5pm)</a><br>"
+        "👉 <a href='/test/taquilla_manual'>Probar Envío Manual de Taquilla Activa</a><br>"
+        "👉 <a href='/test/aviso_antiguo'>Probar Aviso de Taquilla Antiguo (10am/2pm/5pm)</a><br>"
         "👉 <a href='/test/pollas'>Probar Aviso de Pollas (Minuto 10)</a><br>"
         "👉 <a href='/test/resultados'>Forzar Revisión de Resultados Individuales</a><br>"
         "👉 <a href='/test/cierre'>Probar Mensaje de Cierre (9:10 PM)</a>"
@@ -91,10 +110,20 @@ def test_bcv():
     enviar_tasa_dolar()
     return "Prueba de Tasa BCV ejecutada."
 
-@app.route('/test/taquilla')
-def test_taquilla():
+@app.route('/test/taquilla_manual')
+def test_taquilla_manual():
+    global taquilla_activa_hoy, imagen_taquilla_file_id
+    taquilla_activa_hoy = True
+    if imagen_taquilla_file_id:
+        enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+    else:
+        enviar_telegram(caption_taquilla, disable_web_preview=True)
+    return "Prueba de Taquilla Activa ejecutada (y estado marcado como activado)."
+
+@app.route('/test/aviso_antiguo')
+def test_aviso_antiguo():
     enviar_aviso_taquilla()
-    return "Prueba de Aviso de Taquilla ejecutada."
+    return "Prueba de Aviso de Taquilla Antiguo ejecutada."
 
 @app.route('/test/pollas')
 def test_pollas():
@@ -129,6 +158,23 @@ def enviar_telegram(mensaje, disable_web_preview=True):
             print(f"⚠️ Error al enviar al canal: {response.text}")
     except Exception as e:
         print(f"⚠️ Excepción de conexión con Telegram: {e}")
+
+def enviar_telegram_foto(photo_id, caption):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendPhoto"
+    payload = {
+        "chat_id": CANAL,
+        "photo": photo_id,
+        "caption": caption,
+        "parse_mode": "Markdown"
+    }
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code != 200:
+            print(f"⚠️ Error al enviar foto al canal: {response.text}")
+            enviar_telegram(caption, disable_web_preview=True)
+    except Exception as e:
+        print(f"⚠️ Excepción de conexión con Telegram al enviar foto: {e}")
+        enviar_telegram(caption, disable_web_preview=True)
 
 def enviar_saludo_madrugada():
     enviar_telegram(
@@ -255,6 +301,19 @@ def enviar_aviso_taquilla():
         disable_web_preview=True
     )
 
+def tarea_envio_programado_taquilla():
+    global taquilla_activa_hoy, imagen_taquilla_file_id
+    # Si fue activada previamente por el comando del usuario, se envía sola a las 3:00 PM (o cuando esté programado)
+    if taquilla_activa_hoy:
+        if imagen_taquilla_file_id:
+            enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+        else:
+            enviar_telegram(caption_taquilla, disable_web_preview=True)
+
+def reiniciar_activacion_diaria():
+    global taquilla_activa_hoy
+    taquilla_activa_hoy = False
+
 def tarea_minuto_diez():
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
@@ -265,12 +324,15 @@ def tarea_minuto_diez():
     )
 
 def enviar_mensaje_cierre():
+    global taquilla_activa_hoy
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
         "🌙 ¡FINAL DE JORNADA! 🌙\n\n"
         "Estos fueron todos los resultados del día de hoy. ¡Gracias por jugar con nosotros! Los esperamos el día de mañana con mucha más suerte y energía. 🍀✨",
         disable_web_preview=True
     )
+    # Al finalizar la jornada o al día siguiente se restablece el estado de activación
+    taquilla_activa_hoy = False
 
 def verificar_resultados():
     global resultados_enviados, primera_ejecucion
@@ -358,6 +420,22 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
+# Manejador para detectar cuando envías la imagen con la frase "Taquilla activa"
+@bot.message_handler(content_types=['photo'])
+def handle_docs_photo(message):
+    global taquilla_activa_hoy, imagen_taquilla_file_id
+    caption = message.caption or ""
+    # Verificar si el mensaje contiene la frase "taquilla activa" (ignorando mayúsculas/minúsculas)
+    if "taquilla activa" in caption.lower():
+        taquilla_activa_hoy = True
+        # Guardar el file_id de la imagen con mayor resolución (último elemento del array photo)
+        if message.photo:
+            imagen_taquilla_file_id = message.photo[-1].file_id
+            
+        # Reenviar inmediatamente la imagen con el texto configurado al canal
+        enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+        bot.reply_to(message, "✅ ¡Taquilla activada correctamente y publicada en el canal!")
+
 def loop_bot():
     verificar_resultados()
     
@@ -370,10 +448,11 @@ def loop_bot():
     schedule.every().day.at("06:30").do(enviar_tasa_dolar)
     schedule.every().day.at("18:30").do(enviar_tasa_dolar)
     
-    # Avisos de taquilla a las 10:00 AM, 2:00 PM y 5:00 PM
-    schedule.every().day.at("10:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("14:00").do(enviar_aviso_taquilla)
-    schedule.every().day.at("17:00").do(enviar_aviso_taquilla)
+    # Aviso programado de taquilla (ej. a las 3:00 PM / 15:00, solo si fue activado previamente)
+    schedule.every().day.at("15:00").do(tarea_envio_programado_taquilla)
+    
+    # Reiniciar el estado de activación a medianoche o temprano en la madrugada
+    schedule.every().day.at("05:00").do(reiniciar_activacion_diaria)
     
     # Aviso de pollas al minuto 10 de cada hora entre las 7 AM y las 6 PM
     schedule.every().hour.at(":10").do(lambda: tarea_minuto_diez() if 7 <= datetime.now().hour <= 18 else None)
