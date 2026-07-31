@@ -23,7 +23,7 @@ import traceback
 # Desactivar advertencias de certificados SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Credenciales y canal principal
+# Credenciales y canal de prueba actual
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
 CANAL = '@pruebajsj'
 ENLACE_CANAL = 'https://t.me/resultadosagharoldjose'
@@ -69,7 +69,7 @@ caption_taquilla = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
-# Encabezado personalizado solicitado
+# Encabezado personalizado para los resultados
 HEADER_RESULTADOS = (
     "AGENCIA HAROLD JOSE\n"
     "SEGURIDAD Y CONFIANZA\n"
@@ -461,19 +461,34 @@ def handle_text_messages(message):
             enviar_telegram(caption_taquilla, disable_web_preview=True)
         print("✅ Taquilla activada por mensaje de texto.")
 
-# ----------------------------------------------------
+# --- MANEJADOR INTELIGENTE DE RECISIÓN, LIMPIEZA Y ENLACE FINAL ---
+def procesar_limpieza_y_envio_animalitos(text):
+    # Detecta que viene de la otra agencia porque comienza con "RESULTADO PROGRAMADO"
+    if "resultado programado" in text.lower():
+        clave_corte = "resultados animalitos"
+        if clave_corte.lower() in text.lower():
+            # Recorta desde "resultados animalitos" en adelante
+            pos = text.lower().find(clave_corte.lower())
+            texto_limpio = text[pos:].strip()
+            
+            # Arma el mensaje final con el encabezado de Harold José, la tabla limpia y el enlace al final
+            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}\n\n{ENLACE_CANAL}"
+            
+            enviar_telegram(mensaje_completo, disable_web_preview=True)
+            print("✅ Mensaje procesado: recortado, con membrete y con enlace al final añadido.")
+            return True
+    return False
 
-# Manejador para el canal privado de resultados de animalitos en texto limpio
 @bot.channel_post_handler(func=lambda message: True)
 def handle_channel_posts(message):
-    chat_title = message.chat.title or ""
     text = message.text or message.caption or ""
-    if "resultados" in chat_title.lower():
-        if "resultados animalitos" in text.lower():
-            texto_tabla = text.strip()
-            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_tabla}"
-            enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Tabla de resultados enviada al canal principal en formato limpio.")
+    procesar_limpieza_y_envio_animalitos(text)
+
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_direct_messages_animalitos(message):
+    text = message.text or ""
+    procesar_limpieza_y_envio_animalitos(text)
+# -----------------------------------------------------------------------------
 
 def loop_bot():
     verificar_resultados()
