@@ -69,13 +69,14 @@ caption_taquilla = (
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
-# Encabezado personalizado para los resultados
+# Encabezado personalizado con el enlace del canal integrado arriba
 HEADER_RESULTADOS = (
     "AGENCIA HAROLD JOSE\n"
     "SEGURIDAD Y CONFIANZA\n"
     "RESULTADOS OFICIALES\n"
     "📲JUEGA AQUI👇👇\n"
-    "WHATSAPP: 04124489363"
+    "WHATSAPP: 04124489363\n\n"
+    f"📢 CANAL DE RESULTADOS:\n{ENLACE_CANAL}"
 )
 
 app = Flask('')
@@ -461,21 +462,19 @@ def handle_text_messages(message):
             enviar_telegram(caption_taquilla, disable_web_preview=True)
         print("✅ Taquilla activada por mensaje de texto.")
 
-# --- MANEJADOR INTELIGENTE DE RECISIÓN, LIMPIEZA Y ENLACE FINAL ---
+# --- MANEJADOR INTELIGENTE DE RECISIÓN, LIMPIEZA Y ENLACE INTEGRADO ARRIBA ---
 def procesar_limpieza_y_envio_animalitos(text):
-    # Detecta que viene de la otra agencia porque comienza con "RESULTADO PROGRAMADO"
     if "resultado programado" in text.lower():
         clave_corte = "resultados animalitos"
         if clave_corte.lower() in text.lower():
-            # Recorta desde "resultados animalitos" en adelante
             pos = text.lower().find(clave_corte.lower())
             texto_limpio = text[pos:].strip()
             
-            # Arma el mensaje final con el encabezado de Harold José, la tabla limpia y el enlace al final
-            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}\n\n{ENLACE_CANAL}"
+            # El encabezado ya trae el enlace integrado arriba, sin agregarse nada al final de la tabla
+            mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}"
             
             enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Mensaje procesado: recortado, con membrete y con enlace al final añadido.")
+            print("✅ Mensaje procesado: recortado y con el enlace integrado en el encabezado superior.")
             return True
     return False
 
