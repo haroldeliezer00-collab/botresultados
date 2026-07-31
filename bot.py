@@ -427,32 +427,53 @@ def verificar_resultados():
     except Exception as e:
         print(f"Error en resultados: {e}")
 
-# Manejador general para publicaciones en canales configurados
+# --- MANEJADOR UNIVERSAL DE ACTIVACIÓN DE TAQUILLA ---
+def procesar_activacion_taquilla(message):
+    global taquilla_activa_hoy, imagen_taquilla_file_id
+    caption = message.caption or message.text or ""
+    if "taquilla activa" in caption.lower():
+        if message.photo:
+            taquilla_activa_hoy = True
+            imagen_taquilla_file_id = message.photo[-1].file_id
+            enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+            print("✅ Taquilla activada y publicada automáticamente con la imagen.")
+        else:
+            taquilla_activa_hoy = True
+            enviar_telegram(caption_taquilla, disable_web_preview=True)
+            print("✅ Taquilla activada por texto.")
+
+@bot.message_handler(content_types=['photo'])
+def handle_photos(message):
+    procesar_activacion_taquilla(message)
+
+@bot.channel_post_handler(content_types=['photo'])
+def handle_channel_photos(message):
+    procesar_activacion_taquilla(message)
+
+@bot.message_handler(func=lambda msg: True, content_types=['text'])
+def handle_text_messages(message):
+    if "taquilla activa" in (message.text or "").lower():
+        global taquilla_activa_hoy
+        taquilla_activa_hoy = True
+        if imagen_taquilla_file_id:
+            enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
+        else:
+            enviar_telegram(caption_taquilla, disable_web_preview=True)
+        print("✅ Taquilla activada por mensaje de texto.")
+
+# ----------------------------------------------------
+
+# Manejador para el canal privado de resultados de animalitos en texto limpio
 @bot.channel_post_handler(func=lambda message: True)
 def handle_channel_posts(message):
-    global taquilla_activa_hoy, imagen_taquilla_file_id
     chat_title = message.chat.title or ""
     text = message.text or message.caption or ""
-    
-    # 1. Canal "Flyers y Acumulados" para activación de taquilla por imagen
-    if "flyers y acumulados" in chat_title.lower():
-        if message.photo:
-            caption = message.caption or ""
-            if "taquilla activa" in caption.lower():
-                taquilla_activa_hoy = True
-                imagen_taquilla_file_id = message.photo[-1].file_id
-                enviar_telegram_foto(imagen_taquilla_file_id, caption_taquilla)
-                print("✅ Taquilla activada y publicada automáticamente al canal principal.")
-        return
-
-    # 2. Canal privado "RESULTados" para consolidado de animalitos en formato normal (sin bloque de código)
     if "resultados" in chat_title.lower():
         if "resultados animalitos" in text.lower():
             texto_tabla = text.strip()
             mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_tabla}"
             enviar_telegram(mensaje_completo, disable_web_preview=True)
             print("✅ Tabla de resultados enviada al canal principal en formato limpio.")
-        return
 
 def loop_bot():
     verificar_resultados()
