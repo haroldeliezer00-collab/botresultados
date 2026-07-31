@@ -82,10 +82,10 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    estado_taq = "ACTIVADA 🟢" if taquilla_activa_hoy else "DESACTIVADA 🔴"
+    estado_taq = "ACTIVADA 🟢 (Trabajando hoy)" if taquilla_activa_hoy else "DESACTIVADA 🔴 (No laborando)"
     return (
         f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br><br>"
-        f"<b>Estado del aviso de taquilla (Lunes a Lunes):</b> {estado_taq}<br><br>"
+        f"<b>Estado del aviso de taquilla de hoy:</b> {estado_taq}<br><br>"
         "<b>Enlaces de prueba rápida (Test de cada opción):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
         "👉 <a href='/test/piramide'>Probar Pirámide Numérica (6:31 AM)</a><br>"
@@ -257,7 +257,7 @@ def enviar_saludo_matutino():
     enviar_telegram(
         "🎯 AGENCIA HAROLD JOSE 🎯\n\n"
         "🌅 ¡Buenos días a todos! 🌅\n\n"
-        "Ya arrancamos un nuevo día con la mejor energía. Por hiero estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
+        "Ya arrancamos un nuevo día con la mejor energía. Por aquí estaremos compartiendo todos los resultados de los animalitos a medida que vayan saliendo.\n\n"
         "📢 Nuestros canales oficiales:\n"
         "🎟️ Catálogo y WhatsApp: https://wa.me/c/584124489363\n"
         "📸 Instagram: https://www.instagram.com/agharold.jose (@agharold.jose)\n"
@@ -482,7 +482,12 @@ def loop_bot():
 def iniciar_polling_bot():
     while True:
         try:
-            bot.infinity_polling(skip_pending=True, interval=3, timeout=20)
+            bot.infinity_polling(
+                skip_pending=True, 
+                interval=3, 
+                timeout=20, 
+                allowed_updates=['message', 'edited_message', 'channel_post', 'edited_channel_post']
+            )
         except Exception as e:
             print(f"⚠️ Error en polling de Telegram: {e}")
             traceback.print_exc()
