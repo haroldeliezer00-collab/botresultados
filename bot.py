@@ -23,9 +23,9 @@ import traceback
 # Desactivar advertencias de certificados SSL
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Credenciales y canal de prueba actual
+# Credenciales y canal oficial definitivo
 TOKEN = '8738717666:AAGminLobxUmKtbHvTaqnjLxClxbDN6E3tk'
-CANAL = '@pruebajsj'
+CANAL = '@resultadosagharoldjose'
 ENLACE_CANAL = 'https://t.me/resultadosagharoldjose'
 ENLACE_POLLAS = 'https://t.me/pollasydupletas'
 
@@ -65,7 +65,7 @@ caption_taquilla = (
     "https://wa.me/p/33319103291071105/584124489363\n"
     "🚀 Agiliza tu proceso aquí: https://wa.me/p/24724650613899486/584124489363\n\n"
     "RESULTADOS AUTOMÁTICOS\n"
-    "https://t.me/pruebajsj\n\n"
+    f"{ENLACE_CANAL}\n\n"
     "¡Mucho éxito en la jornada de hoy! 🍀✨"
 )
 
@@ -85,7 +85,7 @@ app = Flask('')
 def home():
     estado_taq = "ACTIVADA 🟢 (Trabajando hoy)" if taquilla_activa_hoy else "DESACTIVADA 🔴 (No laborando)"
     return (
-        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal {CANAL}!<br><br>"
+        f"¡El bot de resultados AG HAROLD JOSE está activo en el canal oficial {CANAL}!<br><br>"
         f"<b>Estado del aviso de taquilla de hoy:</b> {estado_taq}<br><br>"
         "<b>Enlaces de prueba rápida (Test de cada opción):</b><br>"
         "👉 <a href='/test/madrugada'>Probar Saludo de Madrugada (6:30 AM)</a><br>"
@@ -470,11 +470,11 @@ def procesar_limpieza_y_envio_animalitos(text):
             pos = text.lower().find(clave_corte.lower())
             texto_limpio = text[pos:].strip()
             
-            # El encabezado ya trae el enlace integrado arriba, sin agregarse nada al final de la tabla
+            # El encabezado ya trae el enlace integrado arriba, listo para copiar a WhatsApp
             mensaje_completo = f"{HEADER_RESULTADOS}\n\n{texto_limpio}"
             
             enviar_telegram(mensaje_completo, disable_web_preview=True)
-            print("✅ Mensaje procesado: recortado y con el enlace integrado en el encabezado superior.")
+            print("✅ Mensaje procesado en canal oficial: recortado y con el enlace integrado en el encabezado.")
             return True
     return False
 
